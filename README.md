@@ -223,6 +223,7 @@ Verify MongoDB connectivity.
 - **[RENDER_MONGODB_INTEGRATION.md](RENDER_MONGODB_INTEGRATION.md)** - Render to MongoDB Atlas integration guide
 - **[FRONTEND_BACKEND_CONNECTION.md](FRONTEND_BACKEND_CONNECTION.md)** - Frontend-backend connection guide
 - **[VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)** - Vercel deployment guide
+- **[VERCEL_LOGIN_TROUBLESHOOTING.md](VERCEL_LOGIN_TROUBLESHOOTING.md)** - Vercel login troubleshooting guide
 
 ---
 
