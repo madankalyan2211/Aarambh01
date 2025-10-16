@@ -220,6 +220,9 @@ Verify MongoDB connectivity.
 - **[MONGODB_ATLAS_SETUP.md](MONGODB_ATLAS_SETUP.md)** - MongoDB Atlas configuration
 - **[USER_REGISTRATION_GUIDE.md](USER_REGISTRATION_GUIDE.md)** - User registration process
 - **[VOICE_ASSISTANT_GUIDE.md](VOICE_ASSISTANT_GUIDE.md)** - Voice assistant features
+- **[RENDER_MONGODB_INTEGRATION.md](RENDER_MONGODB_INTEGRATION.md)** - Render to MongoDB Atlas integration guide
+- **[FRONTEND_BACKEND_CONNECTION.md](FRONTEND_BACKEND_CONNECTION.md)** - Frontend-backend connection guide
+- **[VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)** - Vercel deployment guide
 
 ---
 
@@ -262,6 +265,14 @@ https://www.figma.com/design/zkzPr2Es2INclQCyS2RrFL/Learning-Management-System-U
 1. Whitelist your IP in MongoDB Atlas
 2. Check `.env` file has correct URI
 3. Verify internet connection
+
+### MongoDB Atlas Connection Issues
+**Problem**: "Could not connect to any servers in your MongoDB Atlas cluster"
+**Solution**:
+1. Check [MONGODB_TROUBLESHOOTING.md](MONGODB_TROUBLESHOOTING.md) for detailed troubleshooting steps
+2. Add your current IP address to MongoDB Atlas whitelist
+3. For Render deployment, temporarily add `0.0.0.0/0` to whitelist for testing
+4. Verify your connection string and credentials
 
 ### Port Already in Use
 **Problem**: "Port 3001 already in use"
@@ -323,10 +334,10 @@ This project can be deployed to Render (backend) and Vercel (frontend). Follow t
 2. **Frontend (Vercel)**:
    - Create a new Project on Vercel
    - Import your Git repository
-   - Set the build command to `npm run build` and output directory to `dist`
+   - Set the build command to `npm run build` and output directory to `build`
    - Configure environment variables as specified in [.env.production](.env.production)
 
-For detailed instructions, refer to the [Deployment Guide](DEPLOYMENT_GUIDE.md).
+For detailed instructions, refer to the [Deployment Guide](DEPLOYMENT_GUIDE.md) and [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md).
 
 ## 📞 Support
 
