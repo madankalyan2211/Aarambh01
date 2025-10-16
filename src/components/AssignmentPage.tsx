@@ -1,0 +1,982 @@
+import { useState, useEffect, useRef } from 'react';
+import { Page, UserRole } from '../App';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
+import { useToast } from './ui/toast';
+import { motion } from 'motion/react';
+import { Upload, File, Clock, CheckCircle, AlertCircle, FileText, Loader2, BookOpen, Bot, Users } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { 
+  getStudentAssignments, 
+  getTeacherAssignments, 
+  createAssignment,
+  submitAssignment,
+  submitAssignmentWithFiles,
+  getTeachingCourses,
+  getAssignmentSubmissions,
+  aiGradeSubmission
+} from '../services/api.service';
+
+interface Assignment {
+  id: string;
+  title: string;
+  description: string;
+  course: {
+    id: string;
+    name: string;
+    category: string;
+  };
+  teacher?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  dueDate: string;
+  daysLeft: number;
+  isUrgent: boolean;
+  isOverdue: boolean;
+  totalPoints: number;
+  passingScore: number;
+  instructions: string;
+  attachments: any[];
+  submission?: {
+    id: string;
+    status: string;
+    score: number | null;
+    submittedAt: string;
+    isLate: boolean;
+  };
+  hasSubmitted: boolean;
+}
+
+interface TeacherAssignment {
+  id: string;
+  title: string;
+  description: string;
+  course: {
+    id: string;
+    name: string;
+    category: string;
+    enrolledStudents: number;
+  };
+  dueDate: string;
+  totalPoints: number;
+  passingScore: number;
+  isPublished: boolean;
+  createdAt: string;
+  totalSubmissions: number;
+  gradedSubmissions: number;
+  pendingSubmissions: number;
+  submissionRate: number;
+}
+
+interface Submission {
+  id: string;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  content: string;
+  attachments: any[];
+  submittedAt: string;
+  score: number | null;
+  feedback: string;
+  status: string;
+  isLate: boolean;
+}
+
+interface AssignmentPageProps {
+  onNavigate: (page: Page) => void;
+  userRole: UserRole;
+}
+
+export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
+  const { showToast } = useToast();
+  const [assignments, setAssignments] = useState([]);
+  const [teacherAssignments, setTeacherAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showAIFeedback, setShowAIFeedback] = useState(false);
+  const [plagiarismCheck, setPlagiarismCheck] = useState(0);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [selectedTeacherAssignment, setSelectedTeacherAssignment] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showSubmissions, setShowSubmissions] = useState(false);
+  const [aiGrading, setAiGrading] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState(null);
+  const fileInputRef = useRef(null);
+  
+  // Form states
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [courseId, setCourseId] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [totalPoints, setTotalPoints] = useState(100);
+  const [passingScore, setPassingScore] = useState(60);
+  const [instructions, setInstructions] = useState('');
+  const [content, setContent] = useState('');
+  const [files, setFiles] = useState([]);
+  const [courses, setCourses] = useState([]);
+  
+  const isTeacher = userRole === 'teacher' || userRole === 'admin';
+  
+  useEffect(() => {
+    fetchAssignments();
+    if (isTeacher) {
+      fetchTeachingCourses();
+    }
+  }, [isTeacher]);
+  
+  const fetchAssignments = async () => {
+    setLoading(true);
+    try {
+      const response = isTeacher 
+        ? await getTeacherAssignments()
+        : await getStudentAssignments();
+      
+      if (response.success) {
+        if (isTeacher) {
+          setTeacherAssignments(response.data || []);
+        } else {
+          setAssignments(response.data || []);
+        }
+      } else {
+        showToast('error', 'Failed to load assignments', response.message);
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      showToast('error', 'Error', 'Failed to load assignments');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchTeachingCourses = async () => {
+    try {
+      const response = await getTeachingCourses();
+      if (response.success) {
+        setCourses(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+  
+  const fetchSubmissions = async (assignmentId) => {
+    try {
+      const response = await getAssignmentSubmissions(assignmentId);
+      if (response.success) {
+        setSubmissions(response.data || []);
+      } else {
+        showToast('error', 'Failed to load submissions', response.message);
+      }
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      showToast('error', 'Error', 'Failed to load submissions');
+    }
+  };
+  
+  const handleCreateAssignment = async (e) => {
+    e.preventDefault();
+    
+    if (!title || !description || !courseId || !dueDate) {
+      showToast('warning', 'Missing Fields', 'Please fill in all required fields');
+      return;
+    }
+    
+    try {
+      const assignmentData = {
+        title,
+        description,
+        courseId,
+        dueDate,
+        totalPoints,
+        passingScore,
+        instructions,
+      };
+      
+      const response = await createAssignment(assignmentData);
+      
+      if (response.success) {
+        showToast('success', 'Assignment Created', 'Assignment has been created successfully');
+        setIsCreating(false);
+        resetForm();
+        fetchAssignments();
+      } else {
+        showToast('error', 'Failed to Create', response.message);
+      }
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      showToast('error', 'Error', 'Failed to create assignment');
+    }
+  };
+  
+  const handleSubmitAssignment = async (e) => {
+    e.preventDefault();
+    
+    const hasContent = content && content.trim().length > 0;
+    const hasFiles = files.length > 0;
+    
+    if (!selectedAssignment || (!hasContent && !hasFiles)) {
+      showToast('warning', 'Missing Content', 'Please provide assignment content or attach a file');
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      let response;
+      if (files.length > 0) {
+        // Submit with file attachments
+        console.log('Submitting with files:', files);
+        response = await submitAssignmentWithFiles(selectedAssignment.id, content, files);
+        console.log('File submission response:', response);
+      } else {
+        // Submit text only
+        const submissionData = {
+          assignmentId: selectedAssignment.id,
+          content,
+        };
+        console.log('Submitting text only:', submissionData);
+        response = await submitAssignment(submissionData);
+        console.log('Text submission response:', response);
+      }
+      
+      if (response.success) {
+        showToast('success', 'Assignment Submitted', 'Your assignment has been submitted successfully');
+        setSelectedAssignment(null);
+        setContent('');
+        setFiles([]);
+        fetchAssignments();
+      } else {
+        showToast('error', 'Failed to Submit', response.message || 'Failed to submit assignment');
+      }
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      showToast('error', 'Error', 'Failed to submit assignment: ' + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  const handleAIAssist = async (submissionId) => {
+    console.log('🤖 AI Assist clicked with submissionId:', submissionId);
+    console.log('  Submission ID type:', typeof submissionId);
+    console.log('  Submission ID length:', submissionId ? submissionId.length : 0);
+    
+    setAiGrading(true);
+    try {
+      const response = await aiGradeSubmission(submissionId);
+      if (response.success) {
+        setAiFeedback(response.data);
+        setShowAIFeedback(true);
+        showToast('success', 'AI Analysis Complete', 'AI grading assistance is ready');
+      } else {
+        showToast('error', 'AI Analysis Failed', response.message || 'Failed to get AI grading assistance');
+      }
+    } catch (error) {
+      console.error('Error with AI grading:', error);
+      showToast('error', 'Error', 'Failed to get AI grading assistance');
+    } finally {
+      setAiGrading(false);
+    }
+  };
+  
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setCourseId('');
+    setDueDate('');
+    setTotalPoints(100);
+    setPassingScore(60);
+    setInstructions('');
+  };
+  
+  const handleFileUpload = (e) => {
+    console.log('File upload event triggered:', e.target.files);
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      console.log('New files selected:', newFiles);
+      setFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+  
+  const removeFile = (index) => {
+    console.log('Removing file at index:', index);
+    setFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      console.log('Files after removal:', newFiles);
+      return newFiles;
+    });
+  };
+  
+  const getGradeColor = (status, score) => {
+    if (status === 'graded' && score !== null) {
+      if (score >= 90) return 'bg-green-500';
+      if (score >= 80) return 'bg-blue-500';
+      if (score >= 70) return 'bg-yellow-500';
+      if (score >= 60) return 'bg-orange-500';
+      return 'bg-red-500';
+    }
+    return 'bg-gray-500';
+  };
+  
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'graded':
+        return <Badge className="bg-green-500 text-white">Graded</Badge>;
+      case 'submitted':
+        return <Badge className="bg-blue-500 text-white">Submitted</Badge>;
+      case 'pending':
+        return <Badge className="bg-gray-500 text-white">Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: '#FF69B4' }} />
+          <p className="text-muted-foreground">Loading assignments...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen p-6">
+      <div className="container mx-auto max-w-5xl">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1>{isTeacher ? 'Manage Assignments' : 'My Assignments'}</h1>
+          <p className="text-muted-foreground">
+            {isTeacher ? 'Create and review student submissions' : 'View and submit your assignments'}
+          </p>
+        </motion.div>
+
+        {/* Teacher View - Create Assignment */}
+        {isTeacher && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            {!isCreating ? (
+              <Card className="p-6">
+                <Button 
+                  className="w-full bg-primary hover:bg-accent"
+                  onClick={() => setIsCreating(true)}
+                >
+                  + Create New Assignment
+                </Button>
+              </Card>
+            ) : (
+              <Card className="p-6">
+                <h2 className="mb-4">Create Assignment</h2>
+                <form onSubmit={handleCreateAssignment} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Assignment Title *</Label>
+                    <Input 
+                      id="title" 
+                      placeholder="e.g., Neural Networks Implementation" 
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description *</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Provide detailed instructions..."
+                      className="min-h-[120px]"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="course">Course *</Label>
+                      <select
+                        id="course"
+                        className="w-full p-2 border rounded-md bg-background"
+                        value={courseId}
+                        onChange={(e) => setCourseId(e.target.value)}
+                        required
+                      >
+                        <option value="">Select a course</option>
+                        {courses.map((course: any) => (
+                          <option key={course.id} value={course.id}>
+                            {course.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dueDate">Deadline *</Label>
+                      <Input 
+                        id="dueDate" 
+                        type="datetime-local" 
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="points">Total Points</Label>
+                      <Input 
+                        id="points" 
+                        type="number" 
+                        placeholder="100" 
+                        value={totalPoints}
+                        onChange={(e) => setTotalPoints(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="passingScore">Passing Score</Label>
+                      <Input 
+                        id="passingScore" 
+                        type="number" 
+                        placeholder="60" 
+                        value={passingScore}
+                        onChange={(e) => setPassingScore(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instructions">Instructions (Optional)</Label>
+                    <Textarea
+                      id="instructions"
+                      placeholder="Additional instructions or guidelines..."
+                      className="min-h-[100px]"
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="submit" 
+                      className="bg-primary hover:bg-accent"
+                      disabled={submitting}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Create Assignment'
+                      )}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsCreating(false);
+                        resetForm();
+                      }}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            )}
+          </motion.div>
+        )}
+
+        {/* Student View - Assignment List */}
+        {!isTeacher && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h2 className="mb-4">Available Assignments ({assignments.length})</h2>
+            
+            {assignments.length === 0 ? (
+              <Card className="p-12 text-center">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="mb-2">No Assignments Available</h3>
+                <p className="text-muted-foreground">
+                  You don't have any assignments yet. Check back later!
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {assignments.map((assignment) => (
+                  <motion.div
+                    key={assignment.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card className="p-6 hover:shadow-lg transition-all border-secondary hover:border-[#FF69B4]/50">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-bold text-lg">{assignment.title}</h3>
+                            {assignment.isUrgent && (
+                              <Badge className="bg-accent text-white animate-pulse">Urgent</Badge>
+                            )}
+                          </div>
+                          
+                          <p className="text-muted-foreground mb-3">{assignment.description}</p>
+                          
+                          <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="h-4 w-4" />
+                              {assignment.course.name}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                            </span>
+                            <span>
+                              {assignment.daysLeft > 0 
+                                ? `${assignment.daysLeft} days left`
+                                : assignment.daysLeft === 0 
+                                  ? 'Due today'
+                                  : `${Math.abs(assignment.daysLeft)} days overdue`
+                              }
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline">{assignment.course.category}</Badge>
+                            <Badge variant="outline">{assignment.totalPoints} pts</Badge>
+                            {assignment.teacher && (
+                              <Badge variant="outline">{assignment.teacher.name}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2">
+                          {assignment.submission ? (
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-full ${getGradeColor(assignment.submission.status, assignment.submission.score)}`} />
+                              <span className="text-sm">
+                                {assignment.submission.status === 'graded' && assignment.submission.score !== null
+                                  ? `${assignment.submission.score}/${assignment.totalPoints} pts`
+                                  : assignment.submission.status.charAt(0).toUpperCase() + assignment.submission.status.slice(1)
+                                }
+                              </span>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-orange-500 border-orange-500">
+                              Not Submitted
+                            </Badge>
+                          )}
+                          
+                          <Button 
+                            size="sm"
+                            className="bg-[#FF69B4] hover:bg-[#FF69B4]/90 text-white"
+                            onClick={() => setSelectedAssignment(assignment)}
+                            disabled={assignment.submission?.status === 'submitted' || assignment.submission?.status === 'graded'}
+                          >
+                            {assignment.submission?.status === 'graded' ? 'View Feedback' : 'Submit'}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Teacher View - Assignment List */}
+        {isTeacher && !showSubmissions && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h2 className="mb-4">Your Assignments ({teacherAssignments.length})</h2>
+            
+            {teacherAssignments.length === 0 ? (
+              <Card className="p-12 text-center">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="mb-2">No Assignments Created</h3>
+                <p className="text-muted-foreground mb-4">
+                  You haven't created any assignments yet.
+                </p>
+                <Button 
+                  className="bg-primary hover:bg-accent"
+                  onClick={() => setIsCreating(true)}
+                >
+                  + Create First Assignment
+                </Button>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {teacherAssignments.map((assignment) => (
+                  <motion.div
+                    key={assignment.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Card className="p-6 hover:shadow-lg transition-all border-secondary hover:border-[#FF69B4]/50">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg mb-2">{assignment.title}</h3>
+                          <p className="text-muted-foreground mb-3">{assignment.description}</p>
+                          
+                          <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="h-4 w-4" />
+                              {assignment.course.name}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                            </span>
+                            <span>
+                              {assignment.totalSubmissions} / {assignment.course.enrolledStudents} submissions
+                            </span>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline">{assignment.course.category}</Badge>
+                            <Badge variant="outline">{assignment.totalPoints} pts</Badge>
+                            <Badge 
+                              variant="outline" 
+                              className={assignment.submissionRate >= 80 ? 'text-green-500' : 'text-orange-500'}
+                            >
+                              {assignment.submissionRate}% submitted
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="text-right text-sm">
+                            <p>{assignment.gradedSubmissions} / {assignment.totalSubmissions} graded</p>
+                            <p>{assignment.pendingSubmissions} pending</p>
+                          </div>
+                          
+                          <Button 
+                            size="sm"
+                            className="bg-[#FF69B4] hover:bg-[#FF69B4]/90 text-white"
+                            onClick={() => {
+                              setSelectedTeacherAssignment(assignment);
+                              setShowSubmissions(true);
+                              fetchSubmissions(assignment.id);
+                            }}
+                          >
+                            <Users className="h-4 w-4 mr-2" />
+                            View Submissions
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Teacher View - Submission List */}
+        {isTeacher && showSubmissions && selectedTeacherAssignment && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">{selectedTeacherAssignment.title}</h2>
+                <p className="text-muted-foreground">Student Submissions</p>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSubmissions(false)}
+              >
+                Back to Assignments
+              </Button>
+            </div>
+            
+            {submissions.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="mb-2">No Submissions Yet</h3>
+                <p className="text-muted-foreground">
+                  No students have submitted this assignment yet.
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {submissions.map((submission) => (
+                  <Card key={submission.id} className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-bold">{submission.student.name}</h3>
+                          {submission.isLate && (
+                            <Badge variant="destructive">Late</Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-sm mb-3">
+                          Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                        </p>
+                        
+                        {submission.content && (
+                          <div className="bg-secondary/10 p-3 rounded-lg mb-3">
+                            <p className="text-sm">{submission.content.substring(0, 100)}{submission.content.length > 100 ? '...' : ''}</p>
+                          </div>
+                        )}
+                        
+                        {submission.attachments && submission.attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {submission.attachments.map((attachment, index) => (
+                              <Badge key={index} variant="outline" className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {attachment.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {submission.status === 'graded' && (
+                          <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
+                            <p className="text-sm">
+                              <strong>Grade:</strong> {submission.score} pts
+                            </p>
+                            {submission.feedback && (
+                              <p className="text-sm mt-1">
+                                <strong>Feedback:</strong> {submission.feedback}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        {getStatusBadge(submission.status)}
+                        <Button 
+                          size="sm"
+                          className="bg-[#FF69B4] hover:bg-[#FF69B4]/90 text-white"
+                          onClick={() => handleAIAssist(submission.id)}
+                          disabled={aiGrading}
+                        >
+                          {aiGrading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <Bot className="h-4 w-4 mr-2" />
+                              AI Assist
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </div>
+
+      {/* Submit Assignment Dialog */}
+      <Dialog open={!!selectedAssignment} onOpenChange={() => setSelectedAssignment(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Submit Assignment</DialogTitle>
+            <DialogDescription>
+              {selectedAssignment?.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedAssignment && (
+            <div className="space-y-4">
+              <div className="bg-secondary/10 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Instructions</h4>
+                <p className="text-sm">{selectedAssignment.instructions || selectedAssignment.description}</p>
+              </div>
+              
+              <form onSubmit={handleSubmitAssignment} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="content">Your Response</Label>
+                  <Textarea
+                    id="content"
+                    placeholder="Write your response here..."
+                    className="min-h-[200px]"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Attachments (PDF files only)</Label>
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                      isDragging
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary hover:bg-primary/5'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      console.log('Files dropped:', e.dataTransfer.files);
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+                          (file as File).type === 'application/pdf' || (file as File).name.toLowerCase().endsWith('.pdf')
+                        );
+                        console.log('PDF files dropped:', newFiles);
+                        setFiles(prev => [...prev, ...newFiles]);
+                      }
+                    }}
+                  >
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                    <p className="mb-2">Drag and drop PDF files here</p>
+                    <p className="text-sm text-muted-foreground mb-4">or</p>
+                    <Button 
+                      variant="outline" 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Browse Files
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept=".pdf,application/pdf"
+                      multiple
+                      onChange={handleFileUpload}
+                    />
+                  </div>
+                  
+                  {/* File list */}
+                  {files.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-sm font-medium">Selected files:</p>
+                      {files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-secondary/10 p-2 rounded">
+                          <span className="text-sm flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            {file.name}
+                          </span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => removeFile(index)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setSelectedAssignment(null)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-primary hover:bg-accent"
+                    disabled={submitting || (!content.trim() && files.length === 0)}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Assignment'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Feedback Dialog */}
+      <Dialog open={showAIFeedback} onOpenChange={setShowAIFeedback}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>🤖 AI Grading Assistance</DialogTitle>
+            <DialogDescription>
+              Automated feedback and suggestions for this submission
+            </DialogDescription>
+          </DialogHeader>
+          {aiFeedback ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+                <h4 className="font-semibold mb-2">Suggested Score: {aiFeedback.score}/100</h4>
+                <p className="text-sm">{aiFeedback.feedback}</p>
+                {aiFeedback.pdfProcessed && (
+                  <p className="text-xs mt-2 text-blue-600 dark:text-blue-400">
+                    📄 Processed PDF: {aiFeedback.pdfName}
+                  </p>
+                )}
+              </div>
+              
+              <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+                <h4 className="font-semibold mb-2">Suggestions for Improvement</h4>
+                <ul className="text-sm list-disc pl-5 space-y-1">
+                  {aiFeedback.suggestions && aiFeedback.suggestions.map((suggestion, index) => (
+                    <li key={index}>{suggestion}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900">
+                <h4 className="font-semibold mb-2">💡 How to Use This Feedback</h4>
+                <p className="text-sm">
+                  This AI analysis provides automated suggestions to help you grade this assignment. 
+                  Review the feedback and adjust the final score as needed based on your own assessment.
+                  {aiFeedback.pdfProcessed && " The AI has processed and analyzed the content of the attached PDF file."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p>Generating AI feedback...</p>
+            </div>
+          )}
+          <Button onClick={() => setShowAIFeedback(false)} className="w-full">
+            Got it, thanks!
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

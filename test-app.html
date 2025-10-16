@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+<div id="test">Loading...</div>
+<script>
+  fetch('http://localhost:3000/src/App.tsx')
+    .then(r => r.text())
+    .then(t => {
+      document.getElementById('test').innerHTML = 'App.tsx loaded: ' + t.substring(0, 100);
+    })
+    .catch(e => {
+      document.getElementById('test').innerHTML = 'Error: ' + e;
+    });
+</script>
+</body>
+</html>
