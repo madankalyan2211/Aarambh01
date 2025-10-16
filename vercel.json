@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://aarambh01-m6cx.onrender.com"
+      "destination": "https://aarambh01-m6cx.onrender.com/api/:splat"
     },
     {
       "source": "/(.*)",
