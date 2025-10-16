@@ -138,13 +138,13 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('');
   console.log('🚀 ========================================');
   console.log(`🚀 Aarambh LMS Backend Server Started`);
   console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🚀 Server running on: http://localhost:${PORT}`);
-  console.log(`🚀 Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 Server running on port: ${PORT}`);
+  console.log(`🚀 Health check: /health`);
   console.log('🚀 ========================================');
   console.log('');
   console.log('📧 Email Service: Gmail');
@@ -152,20 +152,29 @@ app.listen(PORT, () => {
   console.log('');
   console.log('📌 Available Endpoints:');
   console.log('   Authentication:');
-  console.log(`   POST http://localhost:${PORT}/api/auth/register - Register new user`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/login - Login user`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/verify-otp-db - Verify OTP (MongoDB)`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/logout - Logout user`);
-  console.log(`   GET  http://localhost:${PORT}/api/auth/me - Get current user`);
+  console.log(`   POST /api/auth/register - Register new user`);
+  console.log(`   POST /api/auth/login - Login user`);
+  console.log(`   POST /api/auth/verify-otp-db - Verify OTP (MongoDB)`);
+  console.log(`   POST /api/auth/logout - Logout user`);
+  console.log(`   GET  /api/auth/me - Get current user`);
   console.log('');
   console.log('   Legacy OTP (Email-based):');
-  console.log(`   POST http://localhost:${PORT}/api/auth/send-otp`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/verify-otp`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/resend-otp`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/send-welcome`);
+  console.log(`   POST /api/auth/send-otp`);
+  console.log(`   POST /api/auth/verify-otp`);
+  console.log(`   POST /api/auth/resend-otp`);
+  console.log(`   POST /api/auth/send-welcome`);
   console.log('');
   console.log('✨ Ready to send OTP emails!');
   console.log('');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please use a different port.`);
+    process.exit(1);
+  }
 });
 
 module.exports = app;

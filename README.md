@@ -336,6 +336,14 @@ For issues and questions:
 3. Open an issue on GitHub
 4. Contact the development team
 
+### Render Deployment Issues
+
+If you're experiencing issues with Render deployment:
+1. Check [RENDER_DEPLOYMENT_TROUBLESHOOTING.md](RENDER_DEPLOYMENT_TROUBLESHOOTING.md) for common solutions
+2. Verify all environment variables are set in Render dashboard
+3. Check that MongoDB Atlas allows connections from Render IPs
+4. Review Render logs for specific error messages
+
 ---
 
 <div align="center">

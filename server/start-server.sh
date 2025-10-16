@@ -4,15 +4,13 @@
 
 echo "Starting Aarambh LMS Backend Server..."
 
-# Check if .env file exists
-if [ -f .env.production ]; then
-  echo "Loading production environment variables..."
-  export $(cat .env.production | xargs)
-elif [ -f .env ]; then
-  echo "Loading development environment variables..."
-  export $(cat .env | xargs)
+# Check if we're on Render (environment variables will be set)
+if [ -n "$RENDER" ]; then
+  echo "Running on Render environment"
+  echo "Port provided by Render: $PORT"
+  echo "Node environment: $NODE_ENV"
 else
-  echo "No environment file found. Using default settings."
+  echo "Running in local development environment"
 fi
 
 # Start the server
