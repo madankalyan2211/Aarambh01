@@ -123,7 +123,7 @@ export const env: EnvConfig = {
   otpResendCooldown: getEnvNumber('VITE_OTP_RESEND_COOLDOWN', 60),
   
   // API Configuration
-  apiBaseUrl: getEnv('VITE_API_BASE_URL', 'http://localhost:3000/api'),
+  apiBaseUrl: getEnv('VITE_API_BASE_URL', 'http://localhost:3001/api'),
   apiTimeout: getEnvNumber('VITE_API_TIMEOUT', 30000),
   
   // Application

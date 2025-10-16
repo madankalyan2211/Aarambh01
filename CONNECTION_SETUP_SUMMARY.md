@@ -133,3 +133,57 @@ For deployment to Render (backend) and Vercel (frontend):
 - [MONGODB_TROUBLESHOOTING.md](MONGODB_TROUBLESHOOTING.md) - Database connection issues
 
 The frontend and backend are now properly connected and ready for development and deployment.
+
+# Connection Setup Summary
+
+This document summarizes the connection setup between your Vercel frontend and Render backend.
+
+## Current Configuration
+
+### 1. Frontend to Backend API Connection
+- **Frontend Environment Variable**: `VITE_API_BASE_URL=https://aarambh01-m6cx.onrender.com`
+- **Location**: [.env.production](file:///Users/madanthambisetty/Downloads/Aarambh/.env.production) file
+- **Usage**: All API calls in [src/services/api.service.ts](file:///Users/madanthambisetty/Downloads/Aarambh/src/services/api.service.ts) use this base URL
+
+### 2. Vercel Proxy Configuration
+- **File**: [vercel.json](file:///Users/madanthambisetty/Downloads/Aarambh/vercel.json)
+- **Rewrite Rule**: `/api/(.*)` requests are forwarded to `https://aarambh01-m6cx.onrender.com`
+- **Purpose**: Ensures client-side routing works correctly
+
+### 3. Backend CORS Configuration
+- **File**: [server/.env.production](file:///Users/madanthambisetty/Downloads/Aarambh/server/.env.production)
+- **Allowed Origins**: 
+  - `http://localhost:3000` (local development)
+  - `https://aarambh-frontend.vercel.app` (main deployment)
+  - `https://aarambh-git-main-madantambisetty.vercel.app` (preview deployments)
+
+### 4. Render Deployment
+- **Service Name**: aarambh-backend
+- **URL**: https://aarambh01-m6cx.onrender.com
+- **Environment Variables**: Configured in Render dashboard (not in code for security)
+
+## How It Works
+
+1. Frontend makes API calls to `/api/...` endpoints
+2. These calls are prefixed with `VITE_API_BASE_URL` (https://aarambh01-m6cx.onrender.com)
+3. Vercel forwards requests to the Render backend
+4. Render backend processes requests and returns responses
+5. CORS is properly configured to allow requests from Vercel domains
+
+## Verification
+
+To verify the connection is working:
+
+1. Visit your Vercel frontend URL
+2. Try to login or register (these make API calls)
+3. Check browser Network tab to see requests going to https://aarambh01-m6cx.onrender.com
+4. Confirm successful responses from the backend
+
+## Troubleshooting
+
+If you encounter connection issues:
+
+1. Check that Render backend is running (visit https://aarambh01-m6cx.onrender.com directly)
+2. Verify CORS configuration includes your frontend domain
+3. Confirm environment variables are set correctly in both Vercel and Render
+4. Check browser console for CORS errors

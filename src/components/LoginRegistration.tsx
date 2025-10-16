@@ -11,7 +11,7 @@ import { Progress } from './ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './ui/input-otp';
 import { Mail, Clock, AlertCircle } from 'lucide-react';
-import { sendOTP, verifyOTP, resendOTP } from '../services/api.service';
+import { sendOTP, verifyOTP, resendOTP, getApiBaseUrl } from '../services/api.service';
 
 interface LoginRegistrationProps {
   onLogin: (role: UserRole, name?: string, email?: string) => void; // Updated to accept email
@@ -115,7 +115,7 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     try {
       // If this is registration, verify OTP from MongoDB
       if (!isLogin) {
-        const verifyResponse = await fetch('http://localhost:3001/api/auth/verify-otp-db', {
+        const verifyResponse = await fetch(`${getApiBaseUrl()}/auth/verify-otp-db`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, otp }),
@@ -191,7 +191,8 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     // For login, try to authenticate directly with MongoDB
     if (isLogin) {
       try {
-        const response = await fetch('http://localhost:3001/api/auth/login', {
+        // Using apiRequest function from api.service.ts
+        const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -234,7 +235,7 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     
     // For registration, create user in MongoDB first
     try {
-      const registerResponse = await fetch('http://localhost:3001/api/auth/register', {
+      const registerResponse = await fetch(`${getApiBaseUrl()}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
