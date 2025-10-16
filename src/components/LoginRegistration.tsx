@@ -11,7 +11,7 @@ import { Progress } from './ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './ui/input-otp';
 import { Mail, Clock, AlertCircle } from 'lucide-react';
-import { sendOTP, verifyOTP, resendOTP, getApiBaseUrl } from '../services/api.service';
+import { sendOTP, verifyOTP, resendOTP, getApiBaseUrl, apiRequest } from '../services/api.service';
 
 interface LoginRegistrationProps {
   onLogin: (role: UserRole, name?: string, email?: string) => void; // Updated to accept email
@@ -115,21 +115,19 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     try {
       // If this is registration, verify OTP from MongoDB
       if (!isLogin) {
-        const verifyResponse = await fetch(`${getApiBaseUrl()}/auth/verify-otp-db`, {
+        // Use the apiRequest function from api.service.ts instead of direct fetch
+        const verifyResponse = await apiRequest('/auth/verify-otp-db', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, otp }),
         });
         
-        const verifyData = await verifyResponse.json();
-        
-        if (verifyData.success) {
+        if (verifyResponse.success) {
           // Store token and user data
-          localStorage.setItem('authToken', verifyData.data.token);
+          localStorage.setItem('authToken', verifyResponse.data.token);
           localStorage.setItem('userData', JSON.stringify({
-            email: verifyData.data.user.email,
-            name: verifyData.data.user.name,
-            role: verifyData.data.user.role,
+            email: verifyResponse.data.user.email,
+            name: verifyResponse.data.user.name,
+            role: verifyResponse.data.user.role,
           }));
           
           setIsVerifying(false);
@@ -137,7 +135,7 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
           setShowTour(true); // Show tour for new users
         } else {
           setIsVerifying(false);
-          setErrorMessage(verifyData.message || 'Invalid OTP. Please try again.');
+          setErrorMessage(verifyResponse.message || 'Invalid OTP. Please try again.');
           setOtp('');
         }
       } else {
@@ -191,19 +189,16 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     // For login, try to authenticate directly with MongoDB
     if (isLogin) {
       try {
-        // Using apiRequest function from api.service.ts
-        const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+        // Using apiRequest function from api.service.ts instead of direct fetch
+        const response = await apiRequest('/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
+        if (response.success) {
           // User is verified, login directly with JWT token
-          const token = data.data.token;
-          const user = data.data.user;
+          const token = response.data.token;
+          const user = response.data.user;
           
           // Store token and user data
           localStorage.setItem('authToken', token);
@@ -216,14 +211,14 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
           // Login to app
           onLogin(user.role, user.name, user.email);
           return;
-        } else if (data.requiresVerification) {
+        } else if (response.data && response.data.requiresVerification) {
           // User exists but not verified - show OTP screen
           alert('Your email is not verified. Please verify your email first.');
           setShowOtpVerification(true);
           sendOtpEmail();
           return;
         } else {
-          alert(data.message || 'Invalid email or password');
+          alert(response.message || 'Invalid email or password');
           return;
         }
       } catch (error) {
@@ -235,9 +230,8 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
     
     // For registration, create user in MongoDB first
     try {
-      const registerResponse = await fetch(`${getApiBaseUrl()}/auth/register`, {
+      const registerResponse = await apiRequest('/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           email, 
           password, 
@@ -246,20 +240,18 @@ export function LoginRegistration({ onLogin }: LoginRegistrationProps) {
         }),
       });
       
-      const registerData = await registerResponse.json();
-      
-      if (registerData.success) {
+      if (registerResponse.success) {
         // User created successfully, now send OTP email
         // The OTP was generated in MongoDB during registration
         setShowOtpVerification(true);
         // Note: The backend already generated OTP, we just show the verification screen
         // In a real app, you'd send the OTP via email here using the backend
         alert(`Registration successful! An OTP has been generated. Check the console for the OTP (in production, this would be sent via email).`);
-      } else if (registerData.message?.includes('already exists')) {
+      } else if (registerResponse.message?.includes('already exists')) {
         alert('Email already registered. Please login instead.');
         setIsLogin(true);
       } else {
-        alert(registerData.message || 'Registration failed. Please try again.');
+        alert(registerResponse.message || 'Registration failed. Please try again.');
       }
     } catch (error) {
       console.error('Registration error:', error);

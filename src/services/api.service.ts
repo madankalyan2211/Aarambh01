@@ -19,7 +19,7 @@ interface ApiResponse<T = any> {
 /**
  * Generic API request handler
  */
-const apiRequest = async <T = any>(
+export const apiRequest = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
@@ -186,6 +186,15 @@ export const getMyStudents = async (): Promise<ApiResponse> => {
 /**
  * Course Management API - For teachers to manage courses
  */
+
+/**
+ * Get all available courses (PUBLIC - no authentication required)
+ */
+export const getPublicCoursesAPI = async (): Promise<ApiResponse> => {
+  return apiRequest('/courses/public', {
+    method: 'GET',
+  });
+};
 
 /**
  * Get all available courses

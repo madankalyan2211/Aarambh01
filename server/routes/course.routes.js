@@ -1,5 +1,6 @@
 const express = require('express');
 const {
+  getPublicCourses,
   getAllCourses,
   getTeacherCourses,
   addTeachingCourse,
@@ -12,6 +13,9 @@ const {
 const { protect, restrictTo, isVerified } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Public route - no authentication required
+router.get('/public', getPublicCourses);
 
 // Protected routes - require authentication
 router.use(protect);

@@ -31,6 +31,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5174',
+  'https://aarambh-frontend.vercel.app',
+  'https://aarambh-git-main-madantambisetty.vercel.app',
+  'https://aarambh.vercel.app'
 ];
 
 app.use(cors({
@@ -38,7 +45,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin is in allowed list or if it's a local request or a vercel app
+    if (allowedOrigins.indexOf(origin) !== -1 || 
+        origin?.startsWith('http://localhost:') || 
+        origin?.startsWith('http://127.0.0.1:') ||
+        origin?.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

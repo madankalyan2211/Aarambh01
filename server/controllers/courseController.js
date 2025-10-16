@@ -1,6 +1,67 @@
 const { Course, User } = require('../models');
 
 /**
+ * Get all available courses (PUBLIC - no authentication required)
+ */
+exports.getPublicCourses = async (req, res) => {
+  try {
+    console.log('\n==============================================');
+    console.log('📚 getPublicCourses API Called (PUBLIC)');
+    console.log('==============================================\n');
+    
+    const courses = await Course.find({ isActive: true, isPublished: true })
+      .select('name description category difficulty tags maxStudents enrolledStudents image')
+      .sort({ category: 1, difficulty: 1 });
+
+    // Helper function to get category-specific image
+    const getCategoryImage = (category) => {
+      const categoryImages = {
+        'Programming': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400',
+        'Web Development': 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400',
+        'Data Science': 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400',
+        'Mobile Development': 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400',
+        'Design': 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400',
+        'Business': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400',
+        'Marketing': 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400',
+        'Database': 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=400',
+        'DevOps': 'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=400',
+        'AI & Machine Learning': 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400',
+      };
+      
+      return categoryImages[category] || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400';
+    };
+
+    const coursesWithCount = courses.map(course => {
+      return {
+        id: course._id.toString(),
+        name: course.name,
+        description: course.description,
+        category: course.category,
+        difficulty: course.difficulty,
+        tags: course.tags,
+        maxStudents: course.maxStudents,
+        enrolledCount: course.enrolledStudents?.length || 0,
+        image: course.image || getCategoryImage(course.category),
+      };
+    });
+
+    console.log(`\n📊 Total courses: ${coursesWithCount.length}\n`);
+
+    res.status(200).json({
+      success: true,
+      data: coursesWithCount,
+    });
+  } catch (error) {
+    console.error('❌ Get public courses error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching courses',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Get all available courses
  */
 exports.getAllCourses = async (req, res) => {

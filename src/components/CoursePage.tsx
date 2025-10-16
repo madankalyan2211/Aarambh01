@@ -1,59 +1,86 @@
-import { useState, useEffect } from 'react';
-import { Page, UserRole } from '../App';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { useToast } from './ui/toast';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Users, Loader2, GraduationCap, Award, User, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import { getAllCoursesAPI, getAllTeachers, getEnrolledCourses, enrollInCourseWithTeacher, unenrollFromCourseNew } from '../services/api.service';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Label } from './ui/label';
+import { useToast } from './ui/toast';
+import { RefreshCw, BookOpen, GraduationCap, Award, Loader2, CheckCircle, User } from 'lucide-react';
+import { getAllCoursesAPI, getAllTeachers, getEnrolledCourses, enrollInCourseWithTeacher, unenrollFromCourseNew, getPublicCoursesAPI } from '../services/api.service';
+import { UserRole } from '../App';
+
+interface Course {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  tags: string[];
+  maxStudents: number;
+  enrolledCount: number;
+  image: string;
+  isEnrolled?: boolean;
+}
+
+interface Teacher {
+  id: string;
+  name: string;
+  email: string;
+  teachingCourses: string[];
+}
 
 interface CoursePageProps {
-  onNavigate: (page: Page) => void;
   userRole: UserRole;
+  onNavigate: (page: string) => void;
   onViewCourse?: (courseId: string) => void;
 }
 
-export function CoursePage({ onNavigate, userRole, onViewCourse }: CoursePageProps) {
+export function CoursePage({ userRole, onNavigate, onViewCourse }: CoursePageProps) {
   const { showToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [lastUpdated, setLastUpdated] = useState(null);
-  
-  // Teacher selection dialog state
   const [showTeacherDialog, setShowTeacherDialog] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
   const [enrolling, setEnrolling] = useState(false);
   const [showUnenrollDialog, setShowUnenrollDialog] = useState(false);
   const [courseToUnenroll, setCourseToUnenroll] = useState(null);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
+  // Fetch data
   const fetchData = async (isManualRefresh = false) => {
-    // Only show loading state on initial load or manual refresh
-    if (isManualRefresh) {
-      setRefreshing(true);
-    } else if (courses.length === 0) {
-      // First load only
+    if (!isManualRefresh) {
       setLoading(true);
+    } else {
+      setRefreshing(true);
     }
-    // Silent update for auto-refresh when data already exists
     
     try {
-      // Fetch courses and teachers
-      const [coursesResponse, teachersResponse] = await Promise.all([
-        getAllCoursesAPI(),
-        getAllTeachers(),
-      ]);
+      let coursesResponse;
+      
+      // Use public courses endpoint for unauthenticated users, authenticated endpoint for logged-in users
+      if (!userRole) {
+        coursesResponse = await getPublicCoursesAPI();
+      } else {
+        // Fetch courses and teachers for authenticated users
+        const [coursesRes, teachersRes] = await Promise.all([
+          getAllCoursesAPI(),
+          getAllTeachers(),
+        ]);
+        
+        coursesResponse = coursesRes;
+        
+        if (teachersRes.success) {
+          setTeachers(teachersRes.data || []);
+        }
+      }
 
       console.log('🔄 Fetching data...', { isManualRefresh });
       console.log('📊 Courses response:', coursesResponse);
@@ -76,10 +103,6 @@ export function CoursePage({ onNavigate, userRole, onViewCourse }: CoursePagePro
           setEnrolledCourseIds(enrolledIds);
         }
       }
-
-      if (teachersResponse.success) {
-        setTeachers(teachersResponse.data || []);
-      }
       
       setLastUpdated(new Date());
     } catch (error) {
@@ -89,6 +112,10 @@ export function CoursePage({ onNavigate, userRole, onViewCourse }: CoursePagePro
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // Get teachers teaching a specific course
   const getTeachersForCourse = (courseId) => {
