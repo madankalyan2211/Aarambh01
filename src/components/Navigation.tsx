@@ -103,22 +103,23 @@ export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark
                   {isDark ? (
                     <>
                       <Sun className="mr-2 h-4 w-4" />
-                      <span>Light Mode</span>
+                      Light Mode
                     </>
                   ) : (
                     <>
                       <Moon className="mr-2 h-4 w-4" />
-                      <span>Dark Mode</span>
+                      Dark Mode
                     </>
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
+                  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
           </div>
         </div>
       </div>

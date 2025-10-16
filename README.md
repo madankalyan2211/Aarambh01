@@ -308,6 +308,26 @@ This project is licensed under the MIT License.
 
 ---
 
+## 🚀 Deployment
+
+This project can be deployed to Render (backend) and Vercel (frontend). Follow the detailed [Deployment Guide](DEPLOYMENT_GUIDE.md) for step-by-step instructions.
+
+### Quick Deployment Steps
+
+1. **Backend (Render)**:
+   - Create a new Web Service on Render
+   - Connect your Git repository
+   - Set the build command to `npm install` and start command to `npm start`
+   - Configure environment variables as specified in [server/.env.production](server/.env.production)
+
+2. **Frontend (Vercel)**:
+   - Create a new Project on Vercel
+   - Import your Git repository
+   - Set the build command to `npm run build` and output directory to `dist`
+   - Configure environment variables as specified in [.env.production](.env.production)
+
+For detailed instructions, refer to the [Deployment Guide](DEPLOYMENT_GUIDE.md).
+
 ## 📞 Support
 
 For issues and questions:

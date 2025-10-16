@@ -13,6 +13,7 @@ import { MyTeachersPage } from './components/MyTeachersPage';
 import { MyStudentsPage } from './components/MyStudentsPage';
 import { TeacherCoursesPage } from './components/TeacherCoursesPage';
 import { CourseContentViewer } from './components/CourseContentViewer';
+import { Landing } from './components/Landing';
 import { ToastProvider } from './components/ui/toast';
 
 export type UserRole = 'student' | 'teacher' | 'admin' | null;
@@ -110,13 +111,11 @@ export default function App() {
   };
 
   const renderPage = () => {
-    // If not logged in, always show login page
-    if (!userRole) {
-      return <LoginRegistration onLogin={handleLogin} />;
-    }
-
-    // After login, show role-based pages
     switch (currentPage) {
+      case 'landing':
+        return <Landing onNavigate={setCurrentPage} />;
+      case 'login':
+        return <LoginRegistration onLogin={handleLogin} />;
       case 'student-dashboard':
         return <StudentDashboard onNavigate={setCurrentPage} userName={userName} userEmail={userEmail} />;
       case 'teacher-dashboard':
@@ -139,8 +138,6 @@ export default function App() {
         return <DiscussionForum onNavigate={setCurrentPage} userRole={userRole} />;
       case 'notifications':
         return <NotificationsPage onNavigate={setCurrentPage} />;
-      case 'admin':
-        return <AdminPanel onNavigate={setCurrentPage} />;
       default:
         // Default to dashboard based on role
         if (userRole === 'student') {

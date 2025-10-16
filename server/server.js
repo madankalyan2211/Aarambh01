@@ -75,10 +75,15 @@ app.use('/api/grades', gradeRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  const mongoose = require('mongoose');
+  const mongodbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
   res.status(200).json({
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
+    mongodb: mongodbStatus,
+    uptime: process.uptime(),
   });
 });
 

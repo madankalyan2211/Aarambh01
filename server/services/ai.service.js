@@ -53,8 +53,8 @@ async function gradeAssignmentWithAI(content, assignment) {
     console.log('  Content length:', content.length, 'characters');
     console.log('  Assignment:', assignment.title);
     
-    // Initialize the model
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // Initialize the model with a working model name
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
     
     // Create grading prompt
     const prompt = `
