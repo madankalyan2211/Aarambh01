@@ -9,12 +9,6 @@
       }
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/build/index.html"
-    }
-  ],
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "framework": null,
@@ -22,6 +16,10 @@
     {
       "source": "/api/(.*)",
       "destination": "https://your-render-app-url.onrender.com/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/build/index.html"
     }
   ],
   "headers": [
