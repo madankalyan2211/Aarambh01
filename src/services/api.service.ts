@@ -7,6 +7,8 @@
 // In production: https://aarambh01-m6cx.onrender.com/api
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
+console.log('🔧 API_BASE_URL:', API_BASE_URL);
+
 interface ApiResponse<T = any> {
   success: boolean;
   message: string;
