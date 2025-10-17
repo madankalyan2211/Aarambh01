@@ -1,6 +1,58 @@
 const { User, Course } = require('../models');
 
 /**
+ * Get all available teachers (PUBLIC - no authentication required)
+ */
+exports.getPublicTeachers = async (req, res) => {
+  try {
+    const teachers = await User.find({ 
+      role: 'teacher',
+      isActive: true 
+    })
+    .select('name email bio avatar teachingCourses students')
+    .populate('teachingCourses', 'name description category difficulty tags')
+    .lean(); // Use lean for better performance
+
+    // Format teachers with proper course mapping
+    const teachersWithCount = teachers.map(teacher => {
+      const teachingCourses = (teacher.teachingCourses || []).map(course => ({
+        id: course._id.toString(),
+        _id: course._id.toString(),
+        name: course.name,
+        description: course.description,
+        category: course.category,
+        difficulty: course.difficulty,
+        tags: course.tags || [],
+      }));
+
+      return {
+        id: teacher._id.toString(),
+        name: teacher.name,
+        email: teacher.email,
+        bio: teacher.bio || '',
+        avatar: teacher.avatar || '',
+        role: 'teacher',
+        studentCount: teacher.students?.length || 0,
+        courseCount: teachingCourses.length,
+        teachingCourses: teachingCourses,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: teachersWithCount,
+    });
+  } catch (error) {
+    console.error('Get public teachers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching teachers',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Get all available teachers
  */
 exports.getAllTeachers = async (req, res) => {

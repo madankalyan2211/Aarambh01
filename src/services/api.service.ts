@@ -110,6 +110,15 @@ export default {
  */
 
 /**
+ * Get all available teachers (PUBLIC - no authentication required)
+ */
+export const getPublicTeachers = async (): Promise<ApiResponse> => {
+  return apiRequest('/enrollment/teachers/public', {
+    method: 'GET',
+  });
+};
+
+/**
  * Get all available teachers
  */
 export const getAllTeachers = async (): Promise<ApiResponse> => {

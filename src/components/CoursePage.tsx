@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from './ui/toast';
 import { RefreshCw, BookOpen, GraduationCap, Award, Loader2, CheckCircle, User } from 'lucide-react';
-import { getAllCoursesAPI, getAllTeachers, getEnrolledCourses, enrollInCourseWithTeacher, unenrollFromCourseNew, getPublicCoursesAPI } from '../services/api.service';
+import { getPublicCoursesAPI, getAllCoursesAPI, getAllTeachers, getEnrolledCourses, enrollInCourseWithTeacher, unenrollFromCourseNew, getPublicTeachers } from '../services/api.service';
 import { UserRole } from '../App';
 
 interface Course {
@@ -64,10 +64,12 @@ export function CoursePage({ userRole, onNavigate, onViewCourse }: CoursePagePro
     
     try {
       let coursesResponse;
+      let teachersResponse;
       
       // Use public courses endpoint for unauthenticated users, authenticated endpoint for logged-in users
       if (!userRole) {
         coursesResponse = await getPublicCoursesAPI();
+        teachersResponse = await getPublicTeachers();
       } else {
         // Fetch courses and teachers for authenticated users
         const [coursesRes, teachersRes] = await Promise.all([
@@ -76,14 +78,12 @@ export function CoursePage({ userRole, onNavigate, onViewCourse }: CoursePagePro
         ]);
         
         coursesResponse = coursesRes;
-        
-        if (teachersRes.success) {
-          setTeachers(teachersRes.data || []);
-        }
+        teachersResponse = teachersRes;
       }
 
       console.log('🔄 Fetching data...', { isManualRefresh });
       console.log('📊 Courses response:', coursesResponse);
+      console.log('👥 Teachers response:', teachersResponse);
 
       if (coursesResponse.success) {
         const coursesData = coursesResponse.data || [];
@@ -104,6 +104,10 @@ export function CoursePage({ userRole, onNavigate, onViewCourse }: CoursePagePro
         }
       }
       
+      if (teachersResponse.success) {
+        setTeachers(teachersResponse.data || []);
+      }
+
       setLastUpdated(new Date());
     } catch (error) {
       console.error('❌ Error fetching data:', error);

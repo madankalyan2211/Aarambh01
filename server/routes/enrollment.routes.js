@@ -1,5 +1,6 @@
 const express = require('express');
 const {
+  getPublicTeachers,
   getAllTeachers,
   getMyTeachers,
   enrollWithTeacher,
@@ -12,7 +13,13 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Debug middleware to log request body
+// Public routes - no authentication required
+router.get('/teachers/public', getPublicTeachers); // Get all available teachers (public)
+
+// Protected routes - require authentication
+router.use(protect);
+
+// Debug middleware to log request body (only for protected routes)
 router.use((req, res, next) => {
   console.log('\n🔍 ENROLLMENT ROUTE DEBUG:');
   console.log('  Method:', req.method);
@@ -23,9 +30,6 @@ router.use((req, res, next) => {
   console.log('  Body JSON:', JSON.stringify(req.body));
   next();
 });
-
-// Protected routes - require authentication
-router.use(protect);
 
 // Teacher routes
 router.get('/teachers', getAllTeachers); // Get all available teachers
