@@ -8,7 +8,10 @@ console.log('🔧 All env variables:', (import.meta as any).env);
 // Use the API base URL from environment variables
 // In development: http://localhost:3001/api
 // In production: Use relative URLs that will be proxied by Vercel
-const IS_PRODUCTION = (import.meta as any).env?.VITE_APP_ENV === 'production';
+// Fallback to checking if we're on Vercel
+const IS_PRODUCTION = (import.meta as any).env?.VITE_APP_ENV === 'production' || 
+                     !!(import.meta as any).env?.VERCEL || 
+                     window.location.hostname.endsWith('.vercel.app');
 const API_BASE_URL = IS_PRODUCTION 
   ? '' // Use relative URLs in production (will be proxied by Vercel)
   : ((import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api');
@@ -16,6 +19,8 @@ const API_BASE_URL = IS_PRODUCTION
 console.log('🔧 API_BASE_URL:', API_BASE_URL);
 console.log('🔧 IS_PRODUCTION:', IS_PRODUCTION);
 console.log('🔧 VITE_APP_ENV:', (import.meta as any).env?.VITE_APP_ENV);
+console.log('🔧 VERCEL:', (import.meta as any).env?.VERCEL);
+console.log('🔧 hostname:', window.location.hostname);
 
 interface ApiResponse<T = any> {
   success: boolean;
