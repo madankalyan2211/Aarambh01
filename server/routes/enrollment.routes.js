@@ -13,21 +13,13 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Test public route - no authentication required
-router.get('/teachers/public/test', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Public test route working',
-  });
-});
-
 // Public routes - no authentication required
 router.get('/teachers/public', getPublicTeachers); // Get all available teachers (public)
 
-// Apply authentication middleware to all subsequent routes
+// Protected routes - require authentication
 router.use(protect);
 
-// Apply debug middleware only to protected routes
+// Debug middleware to log request body (only for protected routes)
 router.use((req, res, next) => {
   console.log('\n🔍 ENROLLMENT ROUTE DEBUG:');
   console.log('  Method:', req.method);
