@@ -2,25 +2,10 @@
  * API Service for backend communication
  */
 
-// Use relative URLs for Vercel deployment, absolute URLs for local development
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001';
-const IS_DEVELOPMENT = (import.meta as any).env?.VITE_APP_ENV === 'development';
-
-// For Vercel deployment, we use relative URLs that will be proxied
-const getBaseUrl = (): string => {
-  if (IS_DEVELOPMENT) {
-    return API_BASE_URL;
-  }
-  // In production (Vercel), we use relative URLs that will be proxied through /api
-  return '';
-};
-
-const BASE_URL = getBaseUrl();
-
-// Export a function to get the API base URL
-export const getApiBaseUrl = (): string => {
-  return BASE_URL;
-};
+// Use the API base URL from environment variables
+// In development: http://localhost:3001/api
+// In production: https://aarambh01-m6cx.onrender.com/api
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -43,11 +28,7 @@ export const apiRequest = async <T = any>(
     };
     
     // Construct the full URL
-    // For development: http://localhost:3001/api/enrollment/teachers/public
-    // For production: /api/enrollment/teachers/public (will be proxied by Vercel)
-    const fullUrl = IS_DEVELOPMENT 
-      ? `${BASE_URL}${endpoint}` 
-      : `/api${endpoint}`;
+    const fullUrl = `${API_BASE_URL}${endpoint}`;
     
     console.log('🚀 API Request:', {
       endpoint,
