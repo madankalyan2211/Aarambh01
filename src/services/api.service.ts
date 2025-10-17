@@ -502,7 +502,7 @@ export const submitAssignmentWithFiles = async (
         }, 2000);
       }
       
-      const response = await fetch(`${API_BASE_URL}/assignments/submit`, {
+      const response = await fetch(`/api/assignments/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -575,4 +575,12 @@ export const aiGradeSubmission = async (submissionId: string, aiPrompt?: string)
     },
     body: JSON.stringify({ aiPrompt }),
   });
+};
+
+/**
+ * Get the API base URL for external use
+ * Always returns empty string to use relative URLs with proxying
+ */
+export const getApiBaseUrl = (): string => {
+  return '';
 };
