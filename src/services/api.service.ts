@@ -2,6 +2,9 @@
  * API Service for backend communication
  */
 
+// Log all environment variables for debugging
+console.log('🔧 All env variables:', (import.meta as any).env);
+
 // Use the API base URL from environment variables
 // In development: http://localhost:3001/api
 // In production: Use relative URLs that will be proxied by Vercel
@@ -12,6 +15,7 @@ const API_BASE_URL = IS_PRODUCTION
 
 console.log('🔧 API_BASE_URL:', API_BASE_URL);
 console.log('🔧 IS_PRODUCTION:', IS_PRODUCTION);
+console.log('🔧 VITE_APP_ENV:', (import.meta as any).env?.VITE_APP_ENV);
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -45,6 +49,8 @@ export const apiRequest = async <T = any>(
       method: options.method,
       headers,
       body: options.body,
+      IS_PRODUCTION,
+      API_BASE_URL,
     });
     
     const response = await fetch(fullUrl, {
