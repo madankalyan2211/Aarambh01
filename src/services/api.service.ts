@@ -2,25 +2,11 @@
  * API Service for backend communication
  */
 
-// Log all environment variables for debugging
-console.log('🔧 All env variables:', (import.meta as any).env);
+// Always use relative URLs that will be proxied by Vercel
+// This works in both development (with Vite proxy) and production (with Vercel proxy)
+const API_BASE_URL = '';
 
-// Use the API base URL from environment variables
-// In development: http://localhost:3001/api
-// In production: Use relative URLs that will be proxied by Vercel
-// Fallback to checking if we're on Vercel
-const IS_PRODUCTION = (import.meta as any).env?.VITE_APP_ENV === 'production' || 
-                     !!(import.meta as any).env?.VERCEL || 
-                     window.location.hostname.endsWith('.vercel.app');
-const API_BASE_URL = IS_PRODUCTION 
-  ? '' // Use relative URLs in production (will be proxied by Vercel)
-  : ((import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api');
-
-console.log('🔧 API_BASE_URL:', API_BASE_URL);
-console.log('🔧 IS_PRODUCTION:', IS_PRODUCTION);
-console.log('🔧 VITE_APP_ENV:', (import.meta as any).env?.VITE_APP_ENV);
-console.log('🔧 VERCEL:', (import.meta as any).env?.VERCEL);
-console.log('🔧 hostname:', window.location.hostname);
+console.log('🔧 Using relative URLs for API requests');
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -42,11 +28,10 @@ export const apiRequest = async <T = any>(
       ...options.headers,
     };
     
-    // Construct the full URL
-    // In production, use relative URLs that will be proxied by Vercel
-    const fullUrl = IS_PRODUCTION 
-      ? `/api${endpoint}` 
-      : `${API_BASE_URL}${endpoint}`;
+    // Construct the full URL using relative URLs that will be proxied
+    // In development: Vite proxies /api/* to http://localhost:3001/api/*
+    // In production: Vercel proxies /api/* to https://aarambh01-m6cx.onrender.com/api/*
+    const fullUrl = `/api${endpoint}`;
     
     console.log('🚀 API Request:', {
       endpoint,
@@ -54,8 +39,6 @@ export const apiRequest = async <T = any>(
       method: options.method,
       headers,
       body: options.body,
-      IS_PRODUCTION,
-      API_BASE_URL,
     });
     
     const response = await fetch(fullUrl, {
