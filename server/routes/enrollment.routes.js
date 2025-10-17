@@ -16,10 +16,10 @@ const router = express.Router();
 // Public routes - no authentication required
 router.get('/teachers/public', getPublicTeachers); // Get all available teachers (public)
 
-// Protected routes - require authentication
+// Apply authentication middleware to all subsequent routes
 router.use(protect);
 
-// Debug middleware to log request body (only for protected routes)
+// Apply debug middleware only to protected routes
 router.use((req, res, next) => {
   console.log('\n🔍 ENROLLMENT ROUTE DEBUG:');
   console.log('  Method:', req.method);
@@ -39,7 +39,7 @@ router.post('/unenroll-teacher', unenrollFromTeacher); // Unenroll from a teache
 
 // Course enrollment routes (student)
 router.post('/enroll-course', restrictTo('student'), enrollInCourseWithTeacher); // Enroll in course with teacher
-router.post('/unenroll-course', restrictTo('student'), unenrollFromCourse); // Unenroll from course
+router.post('/unroll-course', restrictTo('student'), unenrollFromCourse); // Unenroll from course
 
 // Student routes (for teachers)
 router.get('/my-students', getMyStudents); // Get teacher's students
