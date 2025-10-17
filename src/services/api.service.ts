@@ -4,10 +4,14 @@
 
 // Use the API base URL from environment variables
 // In development: http://localhost:3001/api
-// In production: https://aarambh01-m6cx.onrender.com/api
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// In production: Use relative URLs that will be proxied by Vercel
+const IS_PRODUCTION = (import.meta as any).env?.VITE_APP_ENV === 'production';
+const API_BASE_URL = IS_PRODUCTION 
+  ? '' // Use relative URLs in production (will be proxied by Vercel)
+  : ((import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api');
 
 console.log('🔧 API_BASE_URL:', API_BASE_URL);
+console.log('🔧 IS_PRODUCTION:', IS_PRODUCTION);
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -30,7 +34,10 @@ export const apiRequest = async <T = any>(
     };
     
     // Construct the full URL
-    const fullUrl = `${API_BASE_URL}${endpoint}`;
+    // In production, use relative URLs that will be proxied by Vercel
+    const fullUrl = IS_PRODUCTION 
+      ? `/api${endpoint}` 
+      : `${API_BASE_URL}${endpoint}`;
     
     console.log('🚀 API Request:', {
       endpoint,
