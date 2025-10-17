@@ -13,6 +13,14 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Test public route - no authentication required
+router.get('/teachers/public/test', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Public test route working',
+  });
+});
+
 // Public routes - no authentication required
 router.get('/teachers/public', getPublicTeachers); // Get all available teachers (public)
 
@@ -39,7 +47,7 @@ router.post('/unenroll-teacher', unenrollFromTeacher); // Unenroll from a teache
 
 // Course enrollment routes (student)
 router.post('/enroll-course', restrictTo('student'), enrollInCourseWithTeacher); // Enroll in course with teacher
-router.post('/unroll-course', restrictTo('student'), unenrollFromCourse); // Unenroll from course
+router.post('/unenroll-course', restrictTo('student'), unenrollFromCourse); // Unenroll from course
 
 // Student routes (for teachers)
 router.get('/my-students', getMyStudents); // Get teacher's students
