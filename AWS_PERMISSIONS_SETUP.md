@@ -53,28 +53,6 @@ If you prefer to attach policies directly to the user:
 1. Download the CSV file containing the access key ID and secret access key
 2. Save these credentials securely as they will be used to configure the AWS CLI
 
-## Alternative: Using IAM Roles (Recommended for Production)
-
-For production environments, it's recommended to use IAM roles instead of IAM users:
-
-### Step 1: Create an IAM Role
-1. In the IAM dashboard, click on "Roles" in the left sidebar
-2. Click "Create role"
-3. Select "AWS service" as the trusted entity
-4. Choose the service that will use this role (e.g., Elastic Beanstalk service or EC2)
-
-### Step 2: Attach Policies
-Attach the same policies as mentioned above:
-- `AWSElasticBeanstalkFullAccess`
-- `AmazonS3FullAccess`
-- `CloudWatchLogsFullAccess`
-- `AmazonEC2ContainerRegistryFullAccess`
-
-### Step 3: Name and Create Role
-1. Give your role a descriptive name (e.g., "AarambhDeploymentRole")
-2. Add a description
-3. Click "Create role"
-
 ## Configuring AWS CLI with Credentials
 
 After creating the IAM user, configure the AWS CLI with the credentials:
@@ -97,7 +75,7 @@ To verify that your credentials are properly configured, run:
 aws sts get-caller-identity
 ```
 
-This should return information about your IAM user or role.
+This should return information about your IAM user or role without any errors.
 
 ## Policy Details
 
@@ -134,7 +112,9 @@ This policy provides full access to Amazon ECR, including:
 4. **Enable MFA**: Enable multi-factor authentication for IAM users
 5. **Monitor Activity**: Use AWS CloudTrail to monitor API activity
 
-## Troubleshooting
+## Troubleshooting Common Issues
+
+If you encounter the error "Operation Denied. The security token included in the request is invalid", refer to [AWS_CREDENTIALS_TROUBLESHOOTING.md](AWS_CREDENTIALS_TROUBLESHOOTING.md) for detailed troubleshooting steps.
 
 ### Common Issues
 
