@@ -1,11 +1,66 @@
+# Aarambh LMS
 
-  # Learning Management System UI Design
+A comprehensive Learning Management System built with React, Vite, and Node.js.
 
-  This is a code bundle for Learning Management System UI Design. The original project is available at https://www.figma.com/design/zkzPr2Es2INclQCyS2RrFL/Learning-Management-System-UI-Design.
+## Features
 
-  ## Running the code
+- User authentication with OTP
+- Course management
+- Assignment submission
+- Grade tracking
+- Discussion forums
+- Real-time messaging
+- PDF viewing and export
+- Admin panel
 
-  Run `npm i` to install the dependencies.
+## Deployment
 
-  Run `npm run dev` to start the development server.
-  
+### AWS Amplify Deployment
+
+This application can be deployed to AWS Amplify. See [AWS_DEPLOYMENT_GUIDE.md](AWS_DEPLOYMENT_GUIDE.md) for detailed instructions.
+
+### Environment Variables
+
+For deployment, you may need to set the following environment variables:
+
+```
+VITE_API_BASE_URL=https://your-backend-url.com
+VITE_WS_BASE_URL=wss://your-backend-url.com
+```
+
+## Development
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- MongoDB Atlas account
+- Gmail account for email services
+
+### Setup
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables (copy `.env.example` to `.env` and fill in values)
+4. Start the development server: `npm run dev`
+
+### Backend
+
+The backend server can be started with:
+
+```
+cd server
+npm install
+npm start
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a pull request
+
+## License
+
+MIT License
