@@ -1,11 +1,11 @@
 branch-defaults:
   default:
-    environment: null
+    environment: production
     group_suffix: null
 global:
   application_name: aarambh-backend
   branch: null
-  # default_ec2_keyname: aws-eb  # Removed SSH key reference
+  default_ec2_keyname: aws-eb
   default_platform: Node.js 18
   default_region: us-east-1
   include_git_submodules: true
