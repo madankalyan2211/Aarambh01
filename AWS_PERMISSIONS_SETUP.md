@@ -31,6 +31,7 @@ On the "Set permissions" page, you'll have several options. Choose one of the fo
    - `AmazonS3FullAccess`
    - `CloudWatchLogsFullAccess`
    - `AmazonEC2ContainerRegistryFullAccess`
+   - `AmazonEC2FullAccess` (Required for SSH key management)
 5. Click "Create group"
 6. Ensure your new group is selected
 7. Click "Next"
@@ -43,6 +44,7 @@ If you prefer to attach policies directly to the user:
    - `AmazonS3FullAccess`
    - `CloudWatchLogsFullAccess`
    - `AmazonEC2ContainerRegistryFullAccess`
+   - `AmazonEC2FullAccess` (Required for SSH key management)
 3. Click "Next"
 
 ### Step 5: Review and Create
@@ -90,6 +92,10 @@ If you plan to SSH into your Elastic Beanstalk instances for debugging, you'll n
    eb init
    ```
 
+## Handling Permission Errors with Elastic Beanstalk
+
+If you encounter permission errors like "NotAuthorizedError - Operation Denied" when using Elastic Beanstalk, refer to [AWS_EB_PERMISSIONS_FIX.md](AWS_EB_PERMISSIONS_FIX.md) for detailed instructions on updating your IAM permissions.
+
 ## Verifying Permissions
 
 To verify that your credentials are properly configured, run:
@@ -127,6 +133,12 @@ This policy provides full access to Amazon ECR, including:
 - Pushing and pulling Docker images
 - Managing repository policies
 
+### AmazonEC2FullAccess
+This policy provides full access to EC2 services, including:
+- Managing key pairs (required for SSH access)
+- Creating and managing instances
+- Configuring security groups
+
 ## Security Best Practices
 
 1. **Principle of Least Privilege**: Only grant the minimum permissions required
@@ -140,6 +152,8 @@ This policy provides full access to Amazon ECR, including:
 If you encounter the error "Operation Denied. The security token included in the request is invalid", refer to [AWS_CREDENTIALS_TROUBLESHOOTING.md](AWS_CREDENTIALS_TROUBLESHOOTING.md) for detailed troubleshooting steps.
 
 If you encounter SSH key issues with Elastic Beanstalk, refer to [AWS_EB_SSH_KEY_SETUP.md](AWS_EB_SSH_KEY_SETUP.md) for detailed setup instructions.
+
+If you encounter permission errors with Elastic Beanstalk, refer to [AWS_EB_PERMISSIONS_FIX.md](AWS_EB_PERMISSIONS_FIX.md) for detailed instructions.
 
 ### Common Issues
 

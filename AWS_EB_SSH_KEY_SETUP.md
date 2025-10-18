@@ -121,6 +121,10 @@ If you want to use your SSH key with EC2 instances:
    ```
 6. **Click "Import"**
 
+## Handling Permission Errors
+
+If you encounter permission errors like "NotAuthorizedError - Operation Denied", refer to [AWS_EB_PERMISSIONS_FIX.md](AWS_EB_PERMISSIONS_FIX.md) for detailed instructions on updating your IAM permissions.
+
 ## Testing Your SSH Key
 
 To test if your SSH key is working:
