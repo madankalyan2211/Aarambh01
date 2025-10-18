@@ -25,7 +25,8 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 3001;
+// Use PORT from environment variable (for AWS) or default to 31001
+const PORT = process.env.PORT || 31001;
 
 // Initialize Socket.IO
 const io = new Server(server, {
@@ -164,7 +165,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
 
-// Health check endpoint
+// Health check endpoint for AWS Elastic Beanstalk
 app.get('/health', (req, res) => {
   const mongoose = require('mongoose');
   const mongodbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -176,6 +177,11 @@ app.get('/health', (req, res) => {
     mongodbStatus: mongodbStatus,
     uptime: process.uptime(),
   });
+});
+
+// AWS Elastic Beanstalk health check endpoint
+app.get('/health-check', (req, res) => {
+  res.status(200).send('OK');
 });
 
 // Root endpoint

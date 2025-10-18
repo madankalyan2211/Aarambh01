@@ -5,17 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:prod": "./start-server.sh",
-    "dev": "nodemon server.js",
-    "test-db": "node test-connection.js",
-    "test-mongodb": "node test-mongodb-connection.js",
-    "test-connection": "node ../test-frontend-backend-connection.js",
-    "update-whitelist": "node update-mongodb-whitelist.js",
-    "add-render-ip": "node add-render-ip-to-mongodb.js",
-    "test-render": "node test-render-deployment.js",
-    "view-users": "node view-users.js",
-    "clear-db": "node clear-database.js",
-    "test-docker": "node test-docker.js"
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "email",
@@ -40,11 +30,5 @@
     "pdf-parse": "^1.1.1",
     "react-pdf": "^10.2.0",
     "socket.io": "^4.8.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

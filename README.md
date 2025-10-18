@@ -15,9 +15,21 @@ A comprehensive Learning Management System built with React, Vite, and Node.js.
 
 ## Deployment
 
-### AWS Amplify Deployment
+### Frontend Deployment
+
+#### AWS Amplify Deployment
 
 This application can be deployed to AWS Amplify. See [AWS_DEPLOYMENT_GUIDE.md](AWS_DEPLOYMENT_GUIDE.md) for detailed instructions.
+
+### Backend Deployment
+
+#### AWS Elastic Beanstalk Deployment
+
+The backend can be deployed to AWS Elastic Beanstalk. See [AWS_BACKEND_DEPLOYMENT.md](AWS_BACKEND_DEPLOYMENT.md) for detailed instructions.
+
+#### Current Deployment
+
+The backend is currently deployed to Render at `https://aarambh01-m6cx.onrender.com`.
 
 ### Environment Variables
 
