@@ -31,6 +31,10 @@ The backend can be deployed to AWS Elastic Beanstalk. See [AWS_BACKEND_DEPLOYMEN
 
 The backend is currently deployed to Render at `https://aarambh01-m6cx.onrender.com`.
 
+### AWS Permissions Setup
+
+To deploy to AWS services, you'll need to set up proper IAM permissions. See [AWS_PERMISSIONS_SETUP.md](AWS_PERMISSIONS_SETUP.md) for detailed instructions.
+
 ### Environment Variables
 
 For deployment, you may need to set the following environment variables:
