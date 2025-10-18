@@ -82,6 +82,10 @@ If you don't need SSH access to your instances, you can skip the key import step
    # default_ec2_keyname: aws-eb
    ```
 
+## Handling Token Errors
+
+If you encounter token errors like "The security token included in the request is invalid", refer to [AWS_EB_TOKEN_ERROR_FIX.md](AWS_EB_TOKEN_ERROR_FIX.md) for detailed instructions on resolving credential issues.
+
 ## Workaround Solutions
 
 ### Workaround 1: Manually Upload SSH Key to EC2

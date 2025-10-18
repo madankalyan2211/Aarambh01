@@ -96,6 +96,10 @@ If you plan to SSH into your Elastic Beanstalk instances for debugging, you'll n
 
 If you encounter permission errors like "NotAuthorizedError - Operation Denied" when using Elastic Beanstalk, refer to [AWS_EB_PERMISSIONS_FIX.md](AWS_EB_PERMISSIONS_FIX.md) for detailed instructions on updating your IAM permissions.
 
+## Handling Token Errors
+
+If you encounter token errors like "The security token included in the request is invalid", refer to [AWS_EB_TOKEN_ERROR_FIX.md](AWS_EB_TOKEN_ERROR_FIX.md) for detailed instructions on resolving credential issues.
+
 ## Verifying Permissions
 
 To verify that your credentials are properly configured, run:
@@ -154,6 +158,8 @@ If you encounter the error "Operation Denied. The security token included in the
 If you encounter SSH key issues with Elastic Beanstalk, refer to [AWS_EB_SSH_KEY_SETUP.md](AWS_EB_SSH_KEY_SETUP.md) for detailed setup instructions.
 
 If you encounter permission errors with Elastic Beanstalk, refer to [AWS_EB_PERMISSIONS_FIX.md](AWS_EB_PERMISSIONS_FIX.md) for detailed instructions.
+
+If you encounter token errors with Elastic Beanstalk, refer to [AWS_EB_TOKEN_ERROR_FIX.md](AWS_EB_TOKEN_ERROR_FIX.md) for detailed instructions.
 
 ### Common Issues
 
