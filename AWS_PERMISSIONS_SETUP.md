@@ -67,6 +67,29 @@ When prompted, enter:
 - Default region name: [Your preferred region, e.g., us-east-1]
 - Default output format: [json]
 
+## Setting Up SSH Keys for Elastic Beanstalk (Optional)
+
+If you plan to SSH into your Elastic Beanstalk instances for debugging, you'll need to set up SSH keys:
+
+1. **Generate SSH key pair**:
+   ```bash
+   cd /Users/madanthambisetty/Downloads/Aarambh
+   ./generate-eb-ssh-key.sh
+   ```
+
+2. **Or manually create SSH keys**:
+   ```bash
+   ssh-keygen -t rsa -b 4096 -C "aarambh-eb-key" -f ~/.ssh/aws-eb
+   chmod 600 ~/.ssh/aws-eb
+   chmod 644 ~/.ssh/aws-eb.pub
+   ```
+
+3. **Initialize EB CLI and select your key when prompted**:
+   ```bash
+   cd server
+   eb init
+   ```
+
 ## Verifying Permissions
 
 To verify that your credentials are properly configured, run:
@@ -115,6 +138,8 @@ This policy provides full access to Amazon ECR, including:
 ## Troubleshooting Common Issues
 
 If you encounter the error "Operation Denied. The security token included in the request is invalid", refer to [AWS_CREDENTIALS_TROUBLESHOOTING.md](AWS_CREDENTIALS_TROUBLESHOOTING.md) for detailed troubleshooting steps.
+
+If you encounter SSH key issues with Elastic Beanstalk, refer to [AWS_EB_SSH_KEY_SETUP.md](AWS_EB_SSH_KEY_SETUP.md) for detailed setup instructions.
 
 ### Common Issues
 
