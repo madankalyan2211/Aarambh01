@@ -40,14 +40,7 @@ aws_secret_access_key = YOUR_ACTUAL_SECRET_ACCESS_KEY
 
 ### Step 2: Obtain Valid AWS Credentials
 
-1. Sign in to the AWS Management Console
-2. Navigate to IAM service
-3. Either create a new user or retrieve credentials for an existing user
-4. Ensure the user has the required permissions:
-   - AWSElasticBeanstalkFullAccess
-   - AmazonS3FullAccess
-   - CloudWatchLogsFullAccess
-   - AmazonEC2ContainerRegistryFullAccess
+If you don't have valid AWS credentials, follow the guide in [AWS_CREDENTIALS_OBTAINING.md](AWS_CREDENTIALS_OBTAINING.md) to create and obtain them.
 
 ### Step 3: Update Credentials File
 
