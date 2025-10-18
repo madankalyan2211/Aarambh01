@@ -17,31 +17,36 @@ This guide will help you set up the necessary permissions for deploying your Aar
 2. Click the "Add users" button
 3. Enter a username (e.g., "aarambh-deploy-user")
 4. Select "Access key - Programmatic access" and "Password - AWS Management Console access"
-5. Click "Next: Permissions"
+5. Click "Next"
 
 ### Step 4: Set Permissions
-Choose "Attach existing policies directly" and attach the following policies:
+On the "Set permissions" page, you'll have several options. Choose one of the following approaches:
 
-#### Required Policies:
+#### Option 1: Attach AWS Managed Policies (Recommended)
+1. Select "Add user to group"
+2. Click "Create group"
+3. Enter a group name (e.g., "AarambhDeploymentGroup")
+4. In the policy list, search for and select the following policies:
+   - `AWSElasticBeanstalkFullAccess`
+   - `AmazonS3FullAccess`
+   - `CloudWatchLogsFullAccess`
+   - `AmazonEC2ContainerRegistryFullAccess`
+5. Click "Create group"
+6. Ensure your new group is selected
+7. Click "Next"
 
-1. **AWSElasticBeanstalkFullAccess**
-   - Provides full access to Elastic Beanstalk service
-   - Required for Elastic Beanstalk deployment
-
-2. **AmazonS3FullAccess**
-   - Provides full access to S3 buckets and objects
-   - Required for storing application versions and logs
-
-3. **CloudWatchLogsFullAccess**
-   - Provides full access to CloudWatch Logs
-   - Required for application logging and monitoring
-
-4. **AmazonEC2ContainerRegistryFullAccess**
-   - Provides full access to Amazon ECR
-   - Required if you plan to use ECS for container deployment
+#### Option 2: Direct Policy Attachment (Alternative)
+If you prefer to attach policies directly to the user:
+1. Select "Attach policies directly"
+2. In the policy list, search for and select the following policies:
+   - `AWSElasticBeanstalkFullAccess`
+   - `AmazonS3FullAccess`
+   - `CloudWatchLogsFullAccess`
+   - `AmazonEC2ContainerRegistryFullAccess`
+3. Click "Next"
 
 ### Step 5: Review and Create
-1. Review the user details and attached policies
+1. Review the user details and attached policies or groups
 2. Click "Create user"
 
 ### Step 6: Save Credentials
@@ -60,10 +65,10 @@ For production environments, it's recommended to use IAM roles instead of IAM us
 
 ### Step 2: Attach Policies
 Attach the same policies as mentioned above:
-- AWSElasticBeanstalkFullAccess
-- AmazonS3FullAccess
-- CloudWatchLogsFullAccess
-- AmazonEC2ContainerRegistryFullAccess
+- `AWSElasticBeanstalkFullAccess`
+- `AmazonS3FullAccess`
+- `CloudWatchLogsFullAccess`
+- `AmazonEC2ContainerRegistryFullAccess`
 
 ### Step 3: Name and Create Role
 1. Give your role a descriptive name (e.g., "AarambhDeploymentRole")
