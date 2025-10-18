@@ -50,3 +50,17 @@ logs
 
 # OS
 Thumbs.db
+
+# Uploads directory
+server/uploads/
+
+# Test and debug files
+server/debug-message-error.js
+server/test-*.js
+server/create-test-*.js
+server/cookies.txt
+server/test-download.pdf
+
+# Test files in root
+test-*.js
+test-*.html

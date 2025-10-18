@@ -19,9 +19,11 @@ const notificationSchema = new mongoose.Schema({
       'assignment_graded',
       'course_enrolled',
       'discussion_reply',
+      'global_discussion', // Add this for global discussions
       'announcement',
       'grade_posted',
       'system',
+      'message', // Added this for direct messages
     ],
     required: true,
   },

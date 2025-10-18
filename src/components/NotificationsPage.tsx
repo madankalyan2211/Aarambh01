@@ -6,83 +6,221 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { motion } from 'motion/react';
-import { Bell, CheckCircle, Award, MessageSquare, BookOpen, AlertCircle, Mic } from 'lucide-react';
+import { Bell, CheckCircle, Award, MessageSquare, BookOpen, AlertCircle, Mic, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getUnreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead } from '../services/api.service';
+import { io, Socket } from 'socket.io-client';
 
 interface NotificationsPageProps {
   onNavigate: (page: Page) => void;
 }
 
-const notifications = [
-  {
-    id: 1,
-    type: 'grade',
-    title: 'New Grade Posted',
-    message: 'Your AI Quiz #3 has been graded',
-    time: '10 minutes ago',
-    urgent: false,
-    read: false,
-    icon: Award,
-  },
-  {
-    id: 2,
-    type: 'assignment',
-    title: 'Assignment Due Soon',
-    message: 'Neural Network Project due in 24 hours',
-    time: '2 hours ago',
-    urgent: true,
-    read: false,
-    icon: AlertCircle,
-  },
-  {
-    id: 3,
-    type: 'discussion',
-    title: 'New Reply to Your Post',
-    message: 'Sarah Chen replied to "Understanding Backpropagation"',
-    time: '3 hours ago',
-    urgent: false,
-    read: false,
-    icon: MessageSquare,
-  },
-  {
-    id: 4,
-    type: 'course',
-    title: 'New Module Available',
-    message: 'Deep Learning Module 5 is now available',
-    time: '1 day ago',
-    urgent: false,
-    read: true,
-    icon: BookOpen,
-  },
-  {
-    id: 5,
-    type: 'achievement',
-    title: 'Achievement Unlocked!',
-    message: 'You earned the "7-Day Streak" badge 🔥',
-    time: '1 day ago',
-    urgent: false,
-    read: true,
-    icon: Award,
-  },
-  {
-    id: 6,
-    type: 'grade',
-    title: 'Grade Updated',
-    message: 'Your essay grade has been updated to A-',
-    time: '2 days ago',
-    urgent: false,
-    read: true,
-    icon: Award,
-  },
-];
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  time: string;
+  urgent: boolean;
+  read: boolean;
+  icon: any;
+}
 
-const weeklyDigest = [
-  { label: 'Assignments Completed', value: '5' },
-  { label: 'Discussions Participated', value: '12' },
-  { label: 'New Grades', value: '3' },
-  { label: 'Learning Streak', value: '14 days 🔥' },
-];
+const notificationIcons = {
+  grade: Award,
+  assignment: AlertCircle,
+  discussion: MessageSquare,
+  course: BookOpen,
+  achievement: Award,
+  message: MessageSquare,
+  announcement: Bell,
+  system: Bell,
+};
 
 export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    // Create socket connection
+    const newSocket = io('', {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+    });
+    
+    setSocket(newSocket);
+    
+    // Register user with socket server (you'll need to get the user ID from context or props)
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        newSocket.emit('register-user', user._id);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+    
+    // Listen for new notifications
+    newSocket.on('new-notification', (data: { notification: any }) => {
+      // Add the new notification to the list
+      const newNotification: Notification = {
+        id: data.notification._id,
+        type: data.notification.type,
+        title: data.notification.title,
+        message: data.notification.message,
+        time: 'Just now',
+        urgent: data.notification.priority === 'high' || data.notification.priority === 'urgent',
+        read: data.notification.isRead,
+        icon: notificationIcons[data.notification.type as keyof typeof notificationIcons] || Bell,
+      };
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    });
+    
+    // Listen for unread count updates
+    newSocket.on('unread-notifications-count', (data: { count: number }) => {
+      setUnreadCount(data.count);
+    });
+    
+    // Clean up on unmount
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  // Fetch notifications and unread count on component mount
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, []);
+
+  const fetchNotifications = async () => {
+    // This would be replaced with an actual API call to fetch notifications
+    // For now, we'll use mock data but mark them as read/unread based on state
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        type: 'grade',
+        title: 'New Grade Posted',
+        message: 'Your AI Quiz #3 has been graded',
+        time: '10 minutes ago',
+        urgent: false,
+        read: false,
+        icon: Award,
+      },
+      {
+        id: '2',
+        type: 'assignment',
+        title: 'Assignment Due Soon',
+        message: 'Neural Network Project due in 24 hours',
+        time: '2 hours ago',
+        urgent: true,
+        read: false,
+        icon: AlertCircle,
+      },
+      {
+        id: '3',
+        type: 'discussion',
+        title: 'New Reply to Your Post',
+        message: 'Sarah Chen replied to "Understanding Backpropagation"',
+        time: '3 hours ago',
+        urgent: false,
+        read: false,
+        icon: MessageSquare,
+      },
+      {
+        id: '4',
+        type: 'course',
+        title: 'New Module Available',
+        message: 'Deep Learning Module 5 is now available',
+        time: '1 day ago',
+        urgent: false,
+        read: true,
+        icon: BookOpen,
+      },
+      {
+        id: '5',
+        type: 'achievement',
+        title: 'Achievement Unlocked!',
+        message: 'You earned the "7-Day Streak" badge 🔥',
+        time: '1 day ago',
+        urgent: false,
+        read: true,
+        icon: Award,
+      },
+      {
+        id: '6',
+        type: 'grade',
+        title: 'Grade Updated',
+        message: 'Your essay grade has been updated to A-',
+        time: '2 days ago',
+        urgent: false,
+        read: true,
+        icon: Award,
+      },
+    ];
+    
+    setNotifications(mockNotifications);
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await getUnreadNotificationsCount();
+      if (response.success && response.data) {
+        setUnreadCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await markNotificationAsRead(id);
+      if (response.success) {
+        // Update the notification in the list
+        setNotifications(prev => 
+          prev.map(notification => 
+            notification.id === id ? { ...notification, read: true } : notification
+          )
+        );
+        
+        // Update unread count
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await markAllNotificationsAsRead();
+      if (response.success) {
+        // Mark all notifications as read
+        setNotifications(prev => 
+          prev.map(notification => ({ ...notification, read: true }))
+        );
+        
+        // Update unread count
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const weeklyDigest = [
+    { label: 'Assignments Completed', value: '5' },
+    { label: 'Discussions Participated', value: '12' },
+    { label: 'New Grades', value: '3' },
+    { label: 'Learning Streak', value: '14 days 🔥' },
+  ];
+
   return (
     <div className="min-h-screen p-6">
       <div className="container mx-auto max-w-5xl">
@@ -98,7 +236,9 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
               <p className="text-muted-foreground">Stay updated with your learning journey</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">Mark all as read</Button>
+              <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                Mark all as read
+              </Button>
               <Button variant="outline" size="icon">
                 <Mic className="h-4 w-4" />
               </Button>
@@ -124,6 +264,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                       className={`p-4 cursor-pointer transition-all hover:shadow-md ${
                         !notification.read ? 'border-l-4 border-l-primary bg-secondary/20' : ''
                       } ${notification.urgent ? 'animate-pulse-slow' : ''}`}
+                      onClick={() => markAsRead(notification.id)}
                     >
                       <div className="flex items-start gap-3">
                         <div
@@ -158,7 +299,10 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
                           <p className="text-xs text-muted-foreground">{notification.time}</p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                            <Check className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                          </div>
                         )}
                       </div>
                     </Card>

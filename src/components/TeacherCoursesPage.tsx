@@ -4,8 +4,8 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Trash2, Users, Loader2, CheckCircle2 } from 'lucide-react';
-import { getAllCoursesAPI, getTeachingCourses, addTeachingCourse, removeTeachingCourse } from '../services/api.service';
+import { BookOpen, Users, Loader2, CheckCircle2 } from 'lucide-react';
+import { getAllCoursesAPI, getTeachingCourses } from '../services/api.service';
 
 interface TeacherCoursesPageProps {
   onNavigate: (page: Page) => void;
@@ -15,7 +15,6 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
   const [allCourses, setAllCourses] = useState([]);
   const [teachingCourses, setTeachingCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(null);
 
   useEffect(() => {
     fetchCourses();
@@ -46,42 +45,6 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
     }
   };
 
-  const handleAddCourse = async (courseId) => {
-    setProcessing(courseId);
-    try {
-      const result = await addTeachingCourse(courseId);
-      console.log('Add course result:', result);
-
-      if (result.success) {
-        await fetchCourses(); // Refresh the lists
-      }
-    } catch (error) {
-      console.error('Error adding course:', error);
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleRemoveCourse = async (courseId) => {
-    setProcessing(courseId);
-    try {
-      const result = await removeTeachingCourse(courseId);
-      console.log('Remove course result:', result);
-
-      if (result.success) {
-        await fetchCourses(); // Refresh the lists
-      }
-    } catch (error) {
-      console.error('Error removing course:', error);
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const isTeaching = (courseId) => {
-    return teachingCourses.some(c => c.id === courseId);
-  };
-
   return (
     <div className="min-h-screen p-6">
       <div className="container mx-auto max-w-7xl">
@@ -93,7 +56,7 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
         >
           <h1>My Courses 📚</h1>
           <p className="text-muted-foreground">
-            Manage the courses you teach
+            View the courses you teach
           </p>
         </motion.div>
 
@@ -170,19 +133,6 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
                               </Badge>
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 border-accent text-accent hover:bg-accent hover:text-white"
-                            onClick={() => handleRemoveCourse(course.id)}
-                            disabled={processing === course.id}
-                          >
-                            {processing === course.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <><Trash2 className="h-4 w-4 mr-1" /> Remove</>
-                            )}
-                          </Button>
                         </div>
                       </Card>
                     </motion.div>
@@ -193,24 +143,21 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
                   <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground mb-2">No courses yet</p>
                   <p className="text-sm text-muted-foreground">
-                    Add courses from the available list →
+                    You are not currently teaching any courses
                   </p>
                 </Card>
               )}
             </div>
 
-            {/* Available Courses */}
+            {/* Available Courses - Display only, no actions */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Plus className="h-5 w-5" style={{ color: '#FF69B4' }} />
-                <h2>Available Courses ({allCourses.length})</h2>
+                <BookOpen className="h-5 w-5" style={{ color: '#FF69B4' }} />
+                <h2>All Available Courses ({allCourses.length})</h2>
               </div>
 
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {allCourses.map((course, index) => {
-                  const isAlreadyTeaching = isTeaching(course.id);
-                  const isCurrentProcessing = processing === course.id;
-
                   return (
                     <motion.div
                       key={course.id}
@@ -218,7 +165,7 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.05 * index }}
                     >
-                      <Card className={`p-4 ${isAlreadyTeaching ? 'opacity-50' : ''}`}>
+                      <Card className="p-4">
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
                             <BookOpen className="h-5 w-5 text-accent" />
@@ -233,24 +180,6 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
                               <Badge variant="outline" className="text-xs">{course.category}</Badge>
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            className="shrink-0"
-                            style={{ 
-                              backgroundColor: isAlreadyTeaching ? '#6b7280' : '#FF69B4',
-                              color: 'white'
-                            }}
-                            onClick={() => handleAddCourse(course.id)}
-                            disabled={isAlreadyTeaching || isCurrentProcessing}
-                          >
-                            {isCurrentProcessing ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isAlreadyTeaching ? (
-                              'Teaching'
-                            ) : (
-                              <><Plus className="h-4 w-4 mr-1" /> Add</>
-                            )}
-                          </Button>
                         </div>
                       </Card>
                     </motion.div>

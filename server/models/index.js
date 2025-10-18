@@ -6,8 +6,8 @@ const Assignment = require('./Assignment');
 const Submission = require('./Submission');
 const Discussion = require('./Discussion');
 const Notification = require('./Notification');
-const Attendance = require('./Attendance');
-const Grade = require('./Grade');
+const Message = require('./Message');
+const Conversation = require('./Conversation');
 const Announcement = require('./Announcement');
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
   Submission,
   Discussion,
   Notification,
-  Attendance,
-  Grade,
+  Message,
+  Conversation,
   Announcement,
 };

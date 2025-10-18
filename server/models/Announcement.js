@@ -15,72 +15,46 @@ const announcementSchema = new mongoose.Schema({
     ref: 'User',
     required: [true, 'Author is required'],
   },
-  // Target audience
+  // Target audience - could be specific courses, all students, etc.
   targetAudience: {
     type: String,
-    enum: ['all', 'students', 'teachers', 'course_specific'],
+    enum: ['all', 'students', 'teachers', 'specific_courses'],
     default: 'all',
   },
-  course: {
+  // If targetAudience is 'specific_courses', this field will contain course IDs
+  targetCourses: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-  },
-  // Announcement metadata
+  }],
+  // If targetAudience is 'students' or 'teachers', we can filter by role
+  targetRoles: [{
+    type: String,
+    enum: ['student', 'teacher', 'admin'],
+  }],
+  // Priority level for sorting and notifications
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium',
   },
-  category: {
-    type: String,
-    enum: ['general', 'academic', 'event', 'deadline', 'system'],
-    default: 'general',
-  },
-  // Visibility
+  // Whether this announcement should be pinned to the top
   isPinned: {
     type: Boolean,
     default: false,
   },
+  // Whether this announcement is published and visible
   isPublished: {
     type: Boolean,
     default: true,
   },
-  publishDate: {
-    type: Date,
-    default: Date.now,
-  },
-  expiryDate: {
-    type: Date,
-  },
-  // Attachments
-  attachments: [{
-    name: String,
-    url: String,
-    type: String,
-  }],
-  // Engagement
-  views: {
-    type: Number,
-    default: 0,
-  },
-  readBy: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  }],
 }, {
-  timestamps: true,
+  timestamps: true, // Adds createdAt and updatedAt
 });
 
 // Index for querying
-announcementSchema.index({ targetAudience: 1, isPinned: -1, publishDate: -1 });
-announcementSchema.index({ course: 1, isPublished: 1 });
-
-// Method to check if announcement is active
-announcementSchema.methods.isActive = function() {
-  if (!this.isPublished) return false;
-  if (this.expiryDate && new Date() > this.expiryDate) return false;
-  return true;
-};
+announcementSchema.index({ createdAt: -1 });
+announcementSchema.index({ isPinned: -1, createdAt: -1 });
+announcementSchema.index({ author: 1 });
 
 const Announcement = mongoose.model('Announcement', announcementSchema);
 

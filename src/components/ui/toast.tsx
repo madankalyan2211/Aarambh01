@@ -3,25 +3,25 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle, XCircle, AlertCircle, X } from "lucide-react";
 import { cn } from "./utils";
 
-type ToastType = "success" | "error" | "warning" | "info";
+export type ToastType = "success" | "error" | "warning" | "info";
 
-interface Toast {
+export interface Toast {
   id: string;
   type: ToastType;
   title: string;
   description?: string;
 }
 
-interface ToastContextType {
+export interface ToastContextType {
   toasts: Toast[];
   showToast: (type: ToastType, title: string, description?: string) => void;
   removeToast: (id: string) => void;
 }
 
-const ToastContext = React.createContext(undefined);
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
-export function ToastProvider({ children }) {
-  const [toasts, setToasts] = React.useState([]);
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = React.useState<Toast[]>([]);
 
   const showToast = React.useCallback(
     (type: ToastType, title: string, description?: string) => {
@@ -67,7 +67,7 @@ function ToastContainer({
     <div className="fixed top-5 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => (
-          <ToastItem toast={toast} onClose={() => removeToast(toast.id)} />
+          <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
         ))}
       </AnimatePresence>
     </div>

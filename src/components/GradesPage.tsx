@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -62,9 +62,9 @@ interface GradeData {
 
 export function GradesPage({ onNavigate }: GradesPageProps) {
   const { showToast } = useToast();
-  const [gradeData, setGradeData] = useState(null);
+  const [gradeData, setGradeData] = useState<GradeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [whatIfScores, setWhatIfScores] = useState({});
+  const [whatIfScores, setWhatIfScores] = useState<Record<string, number>>({});
   
   useEffect(() => {
     fetchGrades();
@@ -118,7 +118,7 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
     { skill: 'Documentation', score: 82 },
     { skill: 'Creativity', score: 91 },
   ];
-  
+
   if (loading) {
     return (
       <div className="min-h-screen p-6 flex items-center justify-center">
@@ -161,10 +161,6 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
               <h1>My Grades</h1>
               <p className="text-muted-foreground">Track your academic performance</p>
             </div>
-            <Button variant="outline" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export PDF
-            </Button>
           </div>
         </motion.div>
 
@@ -178,10 +174,10 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
           <Card className="p-8 bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Award className="h-6 w-6 text-primary" />
-                <h2>Current Grade</h2>
+                <Award className="h-6 w-6 text-primary flex-shrink-0" />
+                <h2 className="flex-shrink-0">Current Grade</h2>
               </div>
-              <div className="text-6xl mb-2">{currentAverage}%</div>
+              <div className="text-6xl mb-2 font-bold">{currentAverage}%</div>
               <Badge className="bg-primary text-white text-lg px-4 py-1">
                 {parseFloat(currentAverage) >= 90 ? 'A' : parseFloat(currentAverage) >= 80 ? 'B' : 'C'}
               </Badge>
@@ -216,11 +212,17 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
                   <TableBody>
                     {gradeData?.grades.map((grade, index) => (
                       <TableRow key={grade.id}>
-                        <TableCell>{grade.assignment}</TableCell>
-                        <TableCell className="text-right">{grade.percentage}%</TableCell>
-                        <TableCell className="text-right">{grade.weight}%</TableCell>
-                        <TableCell className="text-right">
-                          <Badge className="bg-primary text-white">{grade.letterGrade}</Badge>
+                        <TableCell className="min-w-0">
+                          <span className="truncate">{grade.assignment}</span>
+                        </TableCell>
+                        <TableCell className="text-right min-w-0">
+                          <span className="truncate">{grade.percentage}%</span>
+                        </TableCell>
+                        <TableCell className="text-right min-w-0">
+                          <span className="truncate">{grade.weight}</span>
+                        </TableCell>
+                        <TableCell className="text-right min-w-0">
+                          <Badge className="bg-primary text-white truncate">{grade.letterGrade}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -240,7 +242,11 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={scoreData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="hsl(var(--muted-foreground))" 
+                      tickMargin={10}
+                    />
                     <YAxis stroke="hsl(var(--muted-foreground))" />
                     <Tooltip
                       contentStyle={{
@@ -248,6 +254,9 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
+                      position={{ x: 0, y: 0 }}
+                      offset={20}
+                      wrapperStyle={{ zIndex: 1000 }}
                     />
                     <Bar dataKey="score" fill="#FF69B4" radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -347,8 +356,8 @@ export function GradesPage({ onNavigate }: GradesPageProps) {
                 </div>
                 <div className="mt-4 p-3 bg-secondary/30 rounded-lg">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Projected Grade:</span>
-                    <span className="text-lg text-primary">{currentAverage}%</span>
+                    <span className="text-sm min-w-0 truncate">Projected Grade:</span>
+                    <span className="text-lg text-primary font-bold">{calculateWeightedAverage()}%</span>
                   </div>
                 </div>
                 <Button

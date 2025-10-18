@@ -6,53 +6,417 @@ import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { motion } from 'motion/react';
-import { Users, BookOpen, Activity, AlertTriangle, Server, TrendingUp, Edit, Trash2 } from 'lucide-react';
+import { Users, BookOpen, Activity, AlertTriangle, Server, TrendingUp, Trash2, Plus } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useEffect, useState } from 'react';
+import { getAdminStats, getAdminUsers, getAdminCourses, getSystemHealth, getDailyActiveUsers, getEnrollmentTrend, deleteUser, deleteCourse, createUser, createCourse, searchUsers } from '../services/api.service';
+import { useToast } from './ui/toast';
 
 interface AdminPanelProps {
   onNavigate: (page: Page) => void;
 }
 
-const users = [
-  { id: 1, name: 'Sarah Chen', role: 'Student', status: 'Active', enrolled: 3 },
-  { id: 2, name: 'Dr. Jane Smith', role: 'Teacher', status: 'Active', courses: 2 },
-  { id: 3, name: 'Alex Rivera', role: 'Student', status: 'Active', enrolled: 4 },
-  { id: 4, name: 'Prof. Mike Johnson', role: 'Teacher', status: 'Active', courses: 1 },
-  { id: 5, name: 'Emma Wilson', role: 'Student', status: 'Inactive', enrolled: 2 },
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  enrolled: string | number;
+  courses: string | number;
+  createdAt: string;
+  lastLogin: string;
+}
 
-const courses = [
-  { id: 1, name: 'AI & Machine Learning', students: 45, teacher: 'Dr. Jane Smith', status: 'Active' },
-  { id: 2, name: 'Web Development', students: 38, teacher: 'Prof. Mike Johnson', status: 'Active' },
-  { id: 3, name: 'Digital Marketing', students: 52, teacher: 'Dr. Jane Smith', status: 'Active' },
-];
+interface Course {
+  id: string;
+  name: string;
+  students: number;
+  teacher: string;
+  status: string;
+  createdAt: string;
+}
 
-const activityData = [
-  { date: 'Mon', users: 145 },
-  { date: 'Tue', users: 162 },
-  { date: 'Wed', users: 138 },
-  { date: 'Thu', users: 178 },
-  { date: 'Fri', users: 195 },
-  { date: 'Sat', users: 89 },
-  { date: 'Sun', users: 72 },
-];
+interface Stats {
+  userCount: number;
+  courseCount: number;
+  assignmentCount: number;
+  engagementRate: number;
+  flaggedSubmissions: number;
+}
 
-const enrollmentData = [
-  { month: 'Jan', enrolled: 320 },
-  { month: 'Feb', enrolled: 385 },
-  { month: 'Mar', enrolled: 412 },
-  { month: 'Apr', enrolled: 478 },
-  { month: 'May', enrolled: 523 },
-  { month: 'Jun', enrolled: 567 },
-];
+interface SystemHealth {
+  uptime: number;
+  dbStats: any;
+  activeSessions: number;
+  serverTime: string;
+}
 
-const flaggedSubmissions = [
-  { id: 1, student: 'John Doe', assignment: 'AI Essay', reason: 'High AI similarity', risk: 'High' },
-  { id: 2, student: 'Jane Smith', assignment: 'Web Project', reason: 'Unusual patterns', risk: 'Medium' },
-  { id: 3, student: 'Bob Wilson', assignment: 'Marketing Quiz', reason: 'Plagiarism detected', risk: 'High' },
-];
+interface DailyActiveUsersData {
+  date: string;
+  users: number;
+}
+
+interface EnrollmentTrendData {
+  month: string;
+  enrolled: number;
+}
+
+// FlaggedSubmission interface removed as security tab is no longer used
+
+// Form data interfaces
+interface CreateUserFormData {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+interface CreateCourseFormData {
+  name: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  maxStudents: number;
+}
 
 export function AdminPanel({ onNavigate }: AdminPanelProps) {
+  const { showToast } = useToast();
+  const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]); // Store all users for search
+  const [courses, setCourses] = useState<Course[]>([]);
+  // flaggedSubmissions state removed as security tab is no longer used
+  const [stats, setStats] = useState<Stats>({
+    userCount: 0,
+    courseCount: 0,
+    assignmentCount: 0,
+    engagementRate: 0,
+    flaggedSubmissions: 0
+  });
+  const [systemHealth, setSystemHealth] = useState<SystemHealth>({
+    uptime: 0,
+    dbStats: {},
+    activeSessions: 0,
+    serverTime: ''
+  });
+  const [dailyActiveUsersData, setDailyActiveUsersData] = useState<DailyActiveUsersData[]>([]);
+  const [enrollmentTrendData, setEnrollmentTrendData] = useState<EnrollmentTrendData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Form states
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
+  const [showCreateCourseForm, setShowCreateCourseForm] = useState(false);
+  const [createUserFormData, setCreateUserFormData] = useState<CreateUserFormData>({
+    name: '',
+    email: '',
+    password: '',
+    role: 'student'
+  });
+  const [createCourseFormData, setCreateCourseFormData] = useState<CreateCourseFormData>({
+    name: '',
+    description: '',
+    category: 'General',
+    difficulty: 'Beginner',
+    maxStudents: 100
+  });
+
+  // Add state for delete confirmation
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{type: 'user' | 'course', id: string, name: string} | null>(null);
+
+  // Update the getUsers function to fetch course counts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch dashboard stats
+        const statsResponse = await getAdminStats();
+        if (statsResponse.success && statsResponse.data) {
+          setStats({
+            userCount: statsResponse.data.userCount || 0,
+            courseCount: statsResponse.data.courseCount || 0,
+            assignmentCount: statsResponse.data.assignmentCount || 0,
+            engagementRate: statsResponse.data.engagementRate || 0,
+            flaggedSubmissions: statsResponse.data.flaggedSubmissions || 0
+          });
+        }
+
+        // Fetch users with course counts
+        const usersResponse = await getAdminUsers();
+        if (usersResponse.success && usersResponse.data) {
+          // Fetch course data to calculate enrolled courses
+          const coursesResponse = await getAdminCourses();
+          const courseData = coursesResponse.success ? coursesResponse.data : [];
+          
+          const usersWithCourseCounts = usersResponse.data.map((user: User) => {
+            let enrolledCount = 0;
+            let teachingCount = 0;
+            
+            if (user.role === 'student') {
+              // Count courses where this student is enrolled
+              enrolledCount = courseData.filter((course: Course) => 
+                course.students && Array.isArray(course.students) 
+                  ? course.students.includes(user.id)
+                  : course.students > 0 && courseData.some((c: Course) => c.id === course.id)
+              ).length;
+            } else if (user.role === 'teacher') {
+              // Count courses where this teacher is teaching
+              teachingCount = courseData.filter((course: Course) => 
+                course.teacher && typeof course.teacher === 'string' && course.teacher.includes(user.name)
+              ).length;
+            }
+            
+            return {
+              ...user,
+              enrolled: user.role === 'student' ? enrolledCount : 'N/A',
+              courses: user.role === 'teacher' ? teachingCount : 'N/A'
+            };
+          });
+          
+          setUsers(usersWithCourseCounts);
+          setAllUsers(usersWithCourseCounts); // Store all users for search
+        }
+
+        // Fetch courses
+        const coursesResponse = await getAdminCourses();
+        if (coursesResponse.success && coursesResponse.data) {
+          setCourses(coursesResponse.data);
+        }
+
+        // Fetch flagged submissions - removed as security tab is no longer used
+
+        // Fetch system health
+        const healthResponse = await getSystemHealth();
+        if (healthResponse.success && healthResponse.data) {
+          setSystemHealth(healthResponse.data);
+        }
+
+        // Fetch daily active users data
+        const dailyActiveUsersResponse = await getDailyActiveUsers();
+        if (dailyActiveUsersResponse.success && dailyActiveUsersResponse.data) {
+          setDailyActiveUsersData(dailyActiveUsersResponse.data);
+        }
+
+        // Fetch enrollment trend data
+        const enrollmentTrendResponse = await getEnrollmentTrend();
+        if (enrollmentTrendResponse.success && enrollmentTrendResponse.data) {
+          setEnrollmentTrendData(enrollmentTrendResponse.data);
+        }
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Handle search
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      // If search query is empty, show all users
+      setUsers(allUsers);
+      return;
+    }
+    
+    try {
+      const response = await searchUsers(searchQuery);
+      if (response.success && response.data) {
+        // Map the search results to match our User interface
+        const searchResults = response.data.map((user: any) => ({
+          id: user._id || user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          status: 'Active', // Default status for search results
+          enrolled: 'N/A', // We don't have this data in search results
+          courses: 'N/A', // We don't have this data in search results
+          createdAt: '', // We don't have this data in search results
+          lastLogin: '' // We don't have this data in search results
+        }));
+        setUsers(searchResults);
+      } else {
+        setUsers([]);
+        showToast('warning', 'No Results', 'No users found matching your search query');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      showToast('error', 'Error', 'An error occurred while searching for users');
+    }
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    
+    // If the search box is cleared, show all users
+    if (!e.target.value.trim()) {
+      setUsers(allUsers);
+    }
+  };
+
+  // Handle user deletion
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    setDeleteConfirmation({ type: 'user', id: userId, name: userName });
+  };
+
+  // Handle course deletion
+  const handleDeleteCourse = async (courseId: string, courseName: string) => {
+    setDeleteConfirmation({ type: 'course', id: courseId, name: courseName });
+  };
+
+  // Confirm deletion
+  const confirmDelete = async () => {
+    if (!deleteConfirmation) return;
+    
+    try {
+      let response;
+      
+      if (deleteConfirmation.type === 'user') {
+        response = await deleteUser(deleteConfirmation.id);
+        if (response.success) {
+          // Remove user from state
+          setUsers(users.filter(user => user.id !== deleteConfirmation.id));
+          // Update user count in stats
+          setStats({
+            ...stats,
+            userCount: stats.userCount - 1
+          });
+        }
+      } else if (deleteConfirmation.type === 'course') {
+        response = await deleteCourse(deleteConfirmation.id);
+        if (response.success) {
+          // Remove course from state
+          setCourses(courses.filter(course => course.id !== deleteConfirmation.id));
+          // Update course count in stats
+          setStats({
+            ...stats,
+            courseCount: stats.courseCount - 1
+          });
+        }
+      }
+      
+      if (response?.success) {
+        setDeleteConfirmation(null);
+        showToast('success', 'Success', `${deleteConfirmation.type === 'user' ? 'User' : 'Course'} deleted successfully`);
+      } else {
+        showToast('error', 'Error', response?.message || `Failed to delete ${deleteConfirmation.type}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting ${deleteConfirmation.type}:`, error);
+      showToast('error', 'Error', `An error occurred while deleting the ${deleteConfirmation.type}`);
+    }
+  };
+
+  // Cancel deletion
+  const cancelDelete = () => {
+    setDeleteConfirmation(null);
+  };
+
+  // Handle create user form input changes
+  const handleCreateUserInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCreateUserFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle create course form input changes
+  const handleCreateCourseInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCreateCourseFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle create user form submission
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const response = await createUser(createUserFormData);
+      
+      if (response.success) {
+        showToast('success', 'Success', 'User created successfully');
+        setShowCreateUserForm(false);
+        setCreateUserFormData({
+          name: '',
+          email: '',
+          password: '',
+          role: 'student'
+        });
+        // Refresh users list
+        const usersResponse = await getAdminUsers();
+        if (usersResponse.success && usersResponse.data) {
+          setUsers(usersResponse.data);
+          // Update user count in stats
+          setStats(prev => ({
+            ...prev,
+            userCount: usersResponse.data.length
+          }));
+        }
+      } else {
+        showToast('error', 'Error', response.message || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      showToast('error', 'Error', 'An error occurred while creating the user');
+    }
+  };
+
+  // Handle create course form submission
+  const handleCreateCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const response = await createCourse(createCourseFormData);
+      
+      if (response.success) {
+        showToast('success', 'Success', 'Course created successfully');
+        setShowCreateCourseForm(false);
+        setCreateCourseFormData({
+          name: '',
+          description: '',
+          category: 'General',
+          difficulty: 'Beginner',
+          maxStudents: 100
+        });
+        // Refresh courses list
+        const coursesResponse = await getAdminCourses();
+        if (coursesResponse.success && coursesResponse.data) {
+          setCourses(coursesResponse.data);
+          // Update course count in stats
+          setStats(prev => ({
+            ...prev,
+            courseCount: coursesResponse.data.length
+          }));
+        }
+      } else {
+        showToast('error', 'Error', response.message || 'Failed to create course');
+      }
+    } catch (error) {
+      console.error('Error creating course:', error);
+      showToast('error', 'Error', 'An error occurred while creating the course');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 animate-spin mx-auto mb-4" style={{ color: '#FF69B4' }} />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6">
       <div className="container mx-auto max-w-7xl">
@@ -78,7 +442,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Users className="h-5 w-5 text-primary" />
                 <Badge variant="outline" className="border-primary text-primary">+12%</Badge>
               </div>
-              <p className="text-2xl mb-1">567</p>
+              <p className="text-2xl mb-1">{stats.userCount}</p>
               <p className="text-sm text-muted-foreground">Total Users</p>
             </Card>
           </motion.div>
@@ -93,7 +457,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <BookOpen className="h-5 w-5 text-accent" />
                 <Badge variant="outline" className="border-accent text-accent">+3</Badge>
               </div>
-              <p className="text-2xl mb-1">24</p>
+              <p className="text-2xl mb-1">{stats.courseCount}</p>
               <p className="text-sm text-muted-foreground">Active Courses</p>
             </Card>
           </motion.div>
@@ -108,7 +472,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                 <Activity className="h-5 w-5 text-primary" />
                 <Badge variant="outline" className="border-primary text-primary">+8%</Badge>
               </div>
-              <p className="text-2xl mb-1">92%</p>
+              <p className="text-2xl mb-1">{stats.engagementRate}%</p>
               <p className="text-sm text-muted-foreground">Engagement Rate</p>
             </Card>
           </motion.div>
@@ -121,7 +485,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <Card className="p-4 bg-accent/10 border-accent/30">
               <div className="flex items-center justify-between mb-2">
                 <AlertTriangle className="h-5 w-5 text-accent" />
-                <Badge className="bg-accent text-white">3</Badge>
+                <Badge className="bg-accent text-white">{stats.flaggedSubmissions}</Badge>
               </div>
               <p className="text-2xl mb-1">Alerts</p>
               <p className="text-sm text-muted-foreground">Flagged Items</p>
@@ -135,7 +499,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="courses">Course Management</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="system">System Health</TabsTrigger>
           </TabsList>
 
@@ -148,8 +511,19 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
               <div className="flex items-center justify-between mb-4">
                 <h2>Users</h2>
                 <div className="flex gap-2">
-                  <Input placeholder="Search users..." className="w-64" />
-                  <Button className="bg-primary hover:bg-accent">Add User</Button>
+                  <form onSubmit={handleSearch} className="flex gap-2">
+                    <Input 
+                      placeholder="Search users..." 
+                      className="w-64" 
+                      value={searchQuery}
+                      onChange={handleSearchInputChange}
+                    />
+                    <Button type="submit">Search</Button>
+                  </form>
+                  <Button className="bg-primary hover:bg-accent" onClick={() => setShowCreateUserForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add User
+                  </Button>
                 </div>
               </div>
               <Card>
@@ -182,16 +556,19 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {user.role === 'Student'
+                          {user.role === 'Student' || user.role === 'student'
                             ? `${user.enrolled} courses`
-                            : `${user.courses} courses`}
+                            : user.role === 'Teacher' || user.role === 'teacher'
+                            ? `${user.courses} courses`
+                            : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                            >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -212,7 +589,10 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             >
               <div className="flex items-center justify-between mb-4">
                 <h2>Courses</h2>
-                <Button className="bg-primary hover:bg-accent">Create Course</Button>
+                <Button className="bg-primary hover:bg-accent" onClick={() => setShowCreateCourseForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Course
+                </Button>
               </div>
               <Card>
                 <Table>
@@ -236,10 +616,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteCourse(course.id, course.name)}
+                            >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -266,7 +647,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     <h3>Daily Active Users</h3>
                   </div>
                   <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={activityData}>
+                    <BarChart data={dailyActiveUsersData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
                       <YAxis stroke="hsl(var(--muted-foreground))" />
@@ -288,7 +669,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     <h3>Course Enrollment Trend</h3>
                   </div>
                   <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={enrollmentData}>
+                    <LineChart data={enrollmentTrendData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                       <YAxis stroke="hsl(var(--muted-foreground))" />
@@ -313,57 +694,6 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             </motion.div>
           </TabsContent>
 
-          {/* Security / Auto Cheat Detector */}
-          <TabsContent value="security">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="h-5 w-5 text-accent" />
-                <h2>Auto Cheat Detector</h2>
-              </div>
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Assignment</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Risk Level</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {flaggedSubmissions.map((submission) => (
-                      <TableRow key={submission.id}>
-                        <TableCell>{submission.student}</TableCell>
-                        <TableCell>{submission.assignment}</TableCell>
-                        <TableCell>{submission.reason}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              submission.risk === 'High'
-                                ? 'bg-accent text-white'
-                                : 'bg-secondary text-secondary-foreground'
-                            }
-                          >
-                            {submission.risk}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm">
-                            Review
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Card>
-            </motion.div>
-          </TabsContent>
-
           {/* System Health */}
           <TabsContent value="system">
             <motion.div
@@ -382,7 +712,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Uptime</span>
-                      <Badge className="bg-primary text-white">99.9%</Badge>
+                      <Badge className="bg-primary text-white">
+                        {systemHealth.uptime > 0 
+                          ? `${(systemHealth.uptime / 3600).toFixed(1)}h` 
+                          : 'N/A'}
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Response Time</span>
@@ -390,7 +724,7 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Active Sessions</span>
-                      <span className="text-sm">234</span>
+                      <span className="text-sm">{systemHealth.activeSessions}</span>
                     </div>
                   </div>
                 </Card>
@@ -408,7 +742,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Storage Used</span>
-                      <span className="text-sm">67%</span>
+                      <span className="text-sm">
+                        {systemHealth.dbStats && systemHealth.dbStats.dataSize 
+                          ? `${(systemHealth.dbStats.dataSize / (1024 * 1024)).toFixed(1)}MB` 
+                          : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -418,7 +756,9 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">AI-Generated</span>
-                      <Badge variant="outline" className="border-accent text-accent">3</Badge>
+                      <Badge variant="outline" className="border-accent text-accent">
+                        {stats.flaggedSubmissions}
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Suspicious Activity</span>
@@ -426,7 +766,11 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Last Scan</span>
-                      <span className="text-sm">5 min ago</span>
+                      <span className="text-sm">
+                        {systemHealth.serverTime 
+                          ? new Date(systemHealth.serverTime).toLocaleTimeString() 
+                          : 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </Card>
@@ -434,6 +778,172 @@ export function AdminPanel({ onNavigate }: AdminPanelProps) {
             </motion.div>
           </TabsContent>
         </Tabs>
+
+        {/* Create User Form Modal */}
+        {showCreateUserForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+              <form onSubmit={handleCreateUserSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Name</label>
+                    <Input
+                      name="name"
+                      value={createUserFormData.name}
+                      onChange={handleCreateUserInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email</label>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={createUserFormData.email}
+                      onChange={handleCreateUserInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Password</label>
+                    <Input
+                      type="password"
+                      name="password"
+                      value={createUserFormData.password}
+                      onChange={handleCreateUserInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Role</label>
+                    <select
+                      name="role"
+                      value={createUserFormData.role}
+                      onChange={handleCreateUserInputChange}
+                      className="w-full p-2 border rounded-md bg-background"
+                    >
+                      <option value="student">Student</option>
+                      <option value="teacher">Teacher</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCreateUserForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-primary hover:bg-accent">
+                    Create User
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Create Course Form Modal */}
+        {showCreateCourseForm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-4">Create New Course</h3>
+              <form onSubmit={handleCreateCourseSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Course Name</label>
+                    <Input
+                      name="name"
+                      value={createCourseFormData.name}
+                      onChange={handleCreateCourseInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      name="description"
+                      value={createCourseFormData.description}
+                      onChange={handleCreateCourseInputChange}
+                      className="w-full p-2 border rounded-md bg-background min-h-[100px]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category</label>
+                    <Input
+                      name="category"
+                      value={createCourseFormData.category}
+                      onChange={handleCreateCourseInputChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Difficulty</label>
+                    <select
+                      name="difficulty"
+                      value={createCourseFormData.difficulty}
+                      onChange={handleCreateCourseInputChange}
+                      className="w-full p-2 border rounded-md bg-background"
+                    >
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Max Students</label>
+                    <Input
+                      type="number"
+                      name="maxStudents"
+                      value={createCourseFormData.maxStudents}
+                      onChange={handleCreateCourseInputChange}
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCreateCourseForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-primary hover:bg-accent">
+                    Create Course
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirmation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-2">Confirm Deletion</h3>
+              <p className="text-muted-foreground mb-6">
+                Are you sure you want to delete the {deleteConfirmation.type} "{deleteConfirmation.name}"? 
+                This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={cancelDelete}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  onClick={confirmDelete}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

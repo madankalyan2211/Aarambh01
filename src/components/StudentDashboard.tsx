@@ -6,9 +6,9 @@ import { Progress } from './ui/progress';
 import { motion } from 'motion/react';
 import { BookOpen, Clock, Award, TrendingUp, Flame, Bot, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { getStudentAssignments, getCourseById, getTeacherById } from '../data/mockData';
+import { getCourseById, getTeacherById } from '../data/mockData';
 import { generateStudentQuote, getCachedQuote, cacheQuote } from '../services/ai.service';
-import { getEnrolledCourses } from '../services/api.service';
+import { getEnrolledCourses, getAnnouncements, getStudentAssignments, getStudentGrades, getCurrentUser } from '../services/api.service';
 import { useState, useEffect } from 'react';
 
 interface StudentDashboardProps {
@@ -17,62 +17,69 @@ interface StudentDashboardProps {
   userEmail?: string; // Add userEmail prop for filtering assignments
 }
 
-const enrolledCourses = [
-  {
-    id: 1,
-    title: 'AI & Machine Learning',
-    progress: 65,
-    image: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=400',
-    nextLesson: 'Neural Networks Basics',
-  },
-  {
-    id: 2,
-    title: 'Web Development',
-    progress: 82,
-    image: 'https://images.unsplash.com/photo-1565229284535-2cbbe3049123?w=400',
-    nextLesson: 'React Hooks Advanced',
-  },
-  {
-    id: 3,
-    title: 'Digital Marketing',
-    progress: 45,
-    image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400',
-    nextLesson: 'SEO Strategies',
-  },
-];
+interface Course {
+  id: number;
+  title: string;
+  progress: number;
+  image: string;
+  nextLesson: string;
+  difficulty?: string;
+  name?: string;
+  totalLessons?: number;
+  instructor?: {
+    name: string;
+  };
+}
 
-const grades = [
-  { assignment: 'AI Quiz #3', score: '95%', grade: 'A' },
-  { assignment: 'React Project', score: '88%', grade: 'B+' },
-  { assignment: 'Marketing Essay', score: '92%', grade: 'A-' },
-];
+interface Announcement {
+  id: string;
+  title: string;
+  time: string;
+  author?: string;
+}
 
-const deadlines = [
-  { id: 1, title: 'AI Assignment #4', course: 'AI & Machine Learning', dueDate: 'Tomorrow', daysLeft: 1, urgent: true, teacher: 'Dr. Sarah Chen' },
-  { id: 2, title: 'Web Dev Project', course: 'Web Development', dueDate: 'In 3 days', daysLeft: 3, urgent: false, teacher: 'Prof. Michael Ross' },
-  { id: 3, title: 'Marketing Quiz', course: 'Digital Marketing', dueDate: 'Next week', daysLeft: 7, urgent: false, teacher: 'Dr. Emma Wilson' },
-];
+interface Assignment {
+  id: string;
+  title: string;
+  courseId: string;
+  teacherId: string;
+  dueDate: string;
+  daysLeft: number;
+  urgent: boolean;
+  description: string;
+  createdAt: string;
+  course?: {
+    name: string;
+  };
+  teacher?: {
+    name: string;
+  };
+}
 
-const announcements = [
-  { title: 'New AI Module Released', time: '2 hours ago' },
-  { title: 'Discussion Forum Update', time: '1 day ago' },
-  { title: 'Grades Posted for Quiz #3', time: '2 days ago' },
-];
+interface Grade {
+  assignment: string;
+  score: string;
+  grade: string;
+  percentage?: number;
+}
 
-const motivationalQuotes = [
-  "You're on fire! 🔥 Keep up the great work!",
-  "Every expert was once a beginner. Keep learning! 📚",
-  "Your dedication is inspiring! 💪",
-  "Learning today, leading tomorrow! 🌟",
-];
+
 
 export function StudentDashboard({ onNavigate, userName = 'Student', userEmail = '' }: StudentDashboardProps) {
   const [motivationalQuote, setMotivationalQuote] = useState(
     "Every expert was once a beginner. Keep learning! 📚"
   );
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [loadingGrades, setLoadingGrades] = useState(true);
+  const [learningStreak, setLearningStreak] = useState(0);
+  const [loadingStreak, setLoadingStreak] = useState(true);
 
   // Fetch enrolled courses from backend
   useEffect(() => {
@@ -86,6 +93,10 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
           setEnrolledCourses(response.data);
         } else {
           console.error('❌ Failed to fetch enrolled courses:', response.message);
+          // Handle rate limiting error specifically
+          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+            console.log('Rate limit exceeded for courses');
+          }
         }
       } catch (error) {
         console.error('❌ Error fetching enrolled courses:', error);
@@ -95,6 +106,144 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
     };
 
     fetchEnrolledCourses();
+  }, []);
+
+  // Fetch announcements from backend
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      setLoadingAnnouncements(true);
+      try {
+        const response = await getAnnouncements();
+        console.log('📢 Announcements response:', response);
+        
+        if (response.success && response.data) {
+          // Format announcements for display
+          const formattedAnnouncements = response.data.map((announcement: any) => ({
+            id: announcement._id,
+            title: announcement.title,
+            time: new Date(announcement.createdAt).toLocaleDateString(),
+            author: announcement.author?.name || 'Unknown Author',
+          }));
+          setAnnouncements(formattedAnnouncements);
+        } else {
+          console.error('❌ Failed to fetch announcements:', response.message);
+          // Handle rate limiting error specifically
+          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+            console.log('Rate limit exceeded for announcements');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching announcements:', error);
+      } finally {
+        setLoadingAnnouncements(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
+
+  // Fetch assignments from backend
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      setLoadingAssignments(true);
+      try {
+        const response = await getStudentAssignments();
+        console.log('📝 Assignments response:', response);
+        
+        if (response.success && response.data) {
+          setAssignments(response.data);
+        } else {
+          console.error('❌ Failed to fetch assignments:', response.message);
+          // Handle rate limiting error specifically
+          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+            console.log('Rate limit exceeded for assignments');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching assignments:', error);
+      } finally {
+        setLoadingAssignments(false);
+      }
+    };
+
+    fetchAssignments();
+  }, []);
+
+  // Fetch grades from backend
+  useEffect(() => {
+    const fetchGrades = async () => {
+      setLoadingGrades(true);
+      try {
+        const response = await getStudentGrades();
+        console.log('📊 Grades response:', response);
+        
+        if (response.success && response.data) {
+          // Format grades for display
+          const formattedGrades = response.data.grades.slice(0, 3).map((grade: any) => ({
+            assignment: grade.assignment.title,
+            score: `${grade.percentage}%`,
+            grade: grade.letterGrade,
+            percentage: grade.percentage,
+          }));
+          setGrades(formattedGrades);
+          
+          // Set learning streak from user data
+          // For now, we'll use a placeholder value
+          // In a real implementation, this would come from the user's profile
+          setLearningStreak(14);
+        } else {
+          console.error('❌ Failed to fetch grades:', response.message);
+          // Handle rate limiting error specifically
+          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+            // We could show a specific message to the user about rate limiting
+            console.log('Rate limit exceeded, using default values');
+          }
+          // Still set a default streak value even on error
+          setLearningStreak(14);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching grades:', error);
+        // Set default streak value on error
+        setLearningStreak(14);
+      } finally {
+        setLoadingGrades(false);
+      }
+    };
+
+    fetchGrades();
+  }, []);
+
+  // Handle learning streak loading state
+  useEffect(() => {
+    // Fetch learning streak data from user profile
+    const fetchLearningStreak = async () => {
+      setLoadingStreak(true);
+      try {
+        const response = await getCurrentUser();
+        console.log('👤 User profile response:', response);
+        
+        if (response.success && response.data) {
+          // Set learning streak from user profile
+          setLearningStreak(response.data.learningStreak || 0);
+        } else {
+          console.error('❌ Failed to fetch user profile:', response.message);
+          // Handle rate limiting error specifically
+          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+            console.log('Rate limit exceeded for user profile');
+          }
+          // Still set a default streak value even on error
+          setLearningStreak(0);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching user profile:', error);
+        // Set default streak value on error
+        setLearningStreak(0);
+      } finally {
+        setLoadingStreak(false);
+      }
+    };
+
+    fetchLearningStreak();
   }, []);
 
   // Generate AI-powered motivational quote on mount
@@ -130,14 +279,13 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
     loadQuote();
   }, [userName]); // Re-generate when userName changes
   
-  // Get assignments specific to this student based on their enrolled courses
-  const studentAssignments = getStudentAssignments(userEmail);
+
   
   // Get the most urgent upcoming assignment from student's courses
-  const nextAssignment = studentAssignments.length > 0 ? {
-    ...studentAssignments[0],
-    course: getCourseById(studentAssignments[0].courseId)?.name || 'Unknown Course',
-    teacher: getTeacherById(studentAssignments[0].teacherId)?.name || 'Unknown Teacher',
+  const nextAssignment = assignments.length > 0 ? {
+    ...assignments[0],
+    course: assignments[0].course?.name || getCourseById(assignments[0].courseId)?.name || 'Unknown Course',
+    teacher: assignments[0].teacher?.name || getTeacherById(assignments[0].teacherId)?.name || 'Unknown Teacher',
   } : null;
 
   return (
@@ -217,12 +365,56 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
           >
             <Card className="p-6 h-full flex flex-col justify-between bg-secondary/30">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Flame className="h-5 w-5 text-accent" />
-                  <h3>Learning Streak</h3>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-accent" />
+                    <h3>Learning Streak</h3>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={async () => {
+                      setLoadingStreak(true);
+                      try {
+                        const response = await getCurrentUser();
+                        console.log('👤 User profile response (refresh):', response);
+                        
+                        if (response.success && response.data) {
+                          // Set learning streak from user profile
+                          setLearningStreak(response.data.learningStreak || 0);
+                        } else {
+                          console.error('❌ Failed to fetch user profile:', response.message);
+                          // Handle rate limiting error specifically
+                          if (response.message.includes('Too many requests') || response.message.includes('rate limit')) {
+                            console.log('Rate limit exceeded for user profile');
+                          }
+                          // Still set a default streak value even on error
+                          setLearningStreak(0);
+                        }
+                      } catch (error) {
+                        console.error('❌ Error fetching user profile:', error);
+                        // Set default streak value on error
+                        setLearningStreak(0);
+                      } finally {
+                        setLoadingStreak(false);
+                      }
+                    }}
+                    disabled={loadingStreak}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Loader2 className={`h-4 w-4 ${loadingStreak ? 'animate-spin' : ''}`} />
+                  </Button>
                 </div>
-                <div className="text-4xl mb-2">14 🔥</div>
-                <p className="text-sm text-muted-foreground">Keep it going!</p>
+                {loadingStreak ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-4xl mb-2">{learningStreak} 🔥</div>
+                    <p className="text-sm text-muted-foreground">Keep it going!</p>
+                  </>
+                )}
               </div>
             </Card>
           </motion.div>
@@ -312,7 +504,7 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
                             <span className="text-muted-foreground truncate">
                               📖 Next: {course.nextLesson}
                             </span>
-                            {course.totalLessons > 0 && (
+                            {course.totalLessons && course.totalLessons > 0 && (
                               <span className="text-muted-foreground ml-2 shrink-0">
                                 {course.totalLessons} lessons
                               </span>
@@ -364,17 +556,29 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
                 </Button>
               </div>
               <Card>
-                <div className="divide-y divide-border">
-                  {grades.map((grade, index) => (
-                    <div key={index} className="p-4 flex items-center justify-between hover:bg-secondary/20 transition-colors">
-                      <div>
-                        <p>{grade.assignment}</p>
-                        <p className="text-sm text-muted-foreground">Score: {grade.score}</p>
+                {loadingGrades ? (
+                  <div className="p-4 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading grades...</p>
+                  </div>
+                ) : grades.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {grades.map((grade, index) => (
+                      <div key={index} className="p-4 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+                        <div>
+                          <p>{grade.assignment}</p>
+                          <p className="text-sm text-muted-foreground">Score: {grade.score}</p>
+                        </div>
+                        <Badge className="bg-primary text-white">{grade.grade}</Badge>
                       </div>
-                      <Badge className="bg-primary text-white">{grade.grade}</Badge>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <Award className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No grades available yet</p>
+                  </div>
+                )}
               </Card>
             </motion.div>
           </div>
@@ -392,41 +596,47 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
                 <h2>Upcoming Deadlines</h2>
               </div>
               <Card>
-                <div className="divide-y divide-border">
-                  {studentAssignments.map((assignment) => {
-                    const course = getCourseById(assignment.courseId);
-                    const teacher = getTeacherById(assignment.teacherId);
-                    
-                    return (
-                      <div key={assignment.id} className="p-4 hover:bg-secondary/10 transition-colors cursor-pointer" onClick={() => onNavigate('assignment')}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium mb-1">{assignment.title}</p>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              📚 {course?.name || 'Unknown Course'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              👨‍🏫 {teacher?.name || 'Unknown Teacher'}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            {assignment.urgent && (
-                              <Badge className="bg-accent text-white text-xs">Urgent</Badge>
-                            )}
-                            <span className={`text-xs ${assignment.urgent ? 'text-accent font-semibold' : 'text-muted-foreground'}`}>
-                              {assignment.dueDate}
-                            </span>
+                {loadingAssignments ? (
+                  <div className="p-4 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading assignments...</p>
+                  </div>
+                ) : assignments.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {assignments.map((assignment) => {
+                      const courseName = assignment.course?.name || getCourseById(assignment.courseId)?.name || 'Unknown Course';
+                      const teacherName = assignment.teacher?.name || getTeacherById(assignment.teacherId)?.name || 'Unknown Teacher';
+                      
+                      return (
+                        <div key={assignment.id} className="p-4 hover:bg-secondary/10 transition-colors cursor-pointer" onClick={() => onNavigate('assignment')}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium mb-1">{assignment.title}</p>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                📚 {courseName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                👨‍🏫 {teacherName}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              {assignment.urgent && (
+                                <Badge className="bg-accent text-white text-xs">Urgent</Badge>
+                              )}
+                              <span className={`text-xs ${assignment.urgent ? 'text-accent font-semibold' : 'text-muted-foreground'}`}>
+                                {assignment.dueDate}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                  {studentAssignments.length === 0 && (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      🎉 No pending assignments!
-                    </div>
-                  )}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    🎉 No pending assignments!
+                  </div>
+                )}
               </Card>
             </motion.div>
 
@@ -441,14 +651,31 @@ export function StudentDashboard({ onNavigate, userName = 'Student', userEmail =
                 <h2>Announcements</h2>
               </div>
               <Card>
-                <div className="divide-y divide-border">
-                  {announcements.map((announcement, index) => (
-                    <div key={index} className="p-4 hover:bg-secondary/20 transition-colors cursor-pointer">
-                      <p className="text-sm">{announcement.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{announcement.time}</p>
-                    </div>
-                  ))}
-                </div>
+                {loadingAnnouncements ? (
+                  <div className="p-4 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading announcements...</p>
+                  </div>
+                ) : announcements.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {announcements.map((announcement) => (
+                      <div key={announcement.id} className="p-4 hover:bg-secondary/20 transition-colors cursor-pointer">
+                        <p className="text-sm font-medium">{announcement.title}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-xs text-muted-foreground">{announcement.time}</p>
+                          {announcement.author && (
+                            <p className="text-xs text-muted-foreground">by {announcement.author}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No announcements yet</p>
+                  </div>
+                )}
               </Card>
             </motion.div>
 

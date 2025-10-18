@@ -146,8 +146,11 @@ async function processAndGradePDFSubmission(submission, assignment) {
     
     // For now, process only the first PDF attachment
     const pdfAttachment = pdfAttachments[0];
+    
     // Fix the file path - the URL starts with /uploads/, so we need to construct the correct path
-    const filePath = path.join(__dirname, '..', 'uploads', path.basename(pdfAttachment.url));
+    // The URL is like "/uploads/filename.pdf", we need to join it with the server root
+    const serverRoot = path.join(__dirname, '..');
+    const filePath = path.join(serverRoot, pdfAttachment.url);
     
     console.log('  Processing PDF:', pdfAttachment.name);
     console.log('  File path:', filePath);
