@@ -2,11 +2,12 @@
  * API Service for backend communication
  */
 
-// Always use relative URLs that will be proxied by Vercel
-// This works in both development (with Vite proxy) and production (with Vercel proxy)
-const API_BASE_URL = '';
+import { env } from '../config/env';
 
-console.log('🔧 Using relative URLs for API requests');
+// Use the API base URL from environment variables, fallback to relative URLs
+const API_BASE_URL = env.apiBaseUrl || '';
+
+console.log('🔧 Using API base URL:', API_BASE_URL || 'relative URLs');
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -28,10 +29,10 @@ export const apiRequest = async <T = any>(
       ...options.headers,
     };
     
-    // Construct the full URL using relative URLs that will be proxied
-    // In development: Vite proxies /api/* to http://localhost:3001/api/*
-    // In production: Vercel proxies /api/* to https://aarambh01-m6cx.onrender.com/api/*
-    const fullUrl = `/api${endpoint}`;
+    // Construct the full URL
+    // In production: Use the full API URL from environment variables
+    // In development: Use relative URLs that will be proxied
+    const fullUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : `/api${endpoint}`;
     
     console.log('🚀 API Request:', {
       endpoint,
