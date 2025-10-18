@@ -121,6 +121,42 @@ You should see:
 
 ---
 
+## ☁️ Deployment to Render
+
+### Quick Deployment
+
+1. Fork this repository to your GitHub account
+2. Create a new Web Service on Render
+3. Connect your repository
+4. Configure environment variables (see below)
+5. Deploy!
+
+### Environment Variables for Render
+
+You must set these environment variables in your Render dashboard:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `MONGODB_URI` | MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/db` |
+| `JWT_SECRET` | Secret for JWT tokens | `your-super-secret-key` |
+| `GMAIL_USER` | Gmail address | `your-email@gmail.com` |
+| `GMAIL_APP_PASSWORD` | Gmail App Password | `abcd efgh ijkl mnop` |
+| `ALLOWED_ORIGINS` | Frontend URLs | `https://your-frontend.onrender.com` |
+| `API_SECRET_KEY` | API secret key | `your-api-secret-key` |
+
+### MongoDB Atlas Configuration
+
+For Render deployment, add `0.0.0.0/0` to your MongoDB Atlas IP whitelist for testing, or use static IPs for production.
+
+### Deployment Guides
+
+For detailed deployment instructions, see:
+- [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) - Complete deployment guide
+- [RENDER_DEPLOYMENT_CHECKLIST.md](RENDER_DEPLOYMENT_CHECKLIST.md) - Step-by-step checklist
+- [RENDER_DEPLOYMENT_SUMMARY.md](RENDER_DEPLOYMENT_SUMMARY.md) - Quick reference
+
+---
+
 ## 📡 API Endpoints
 
 ### Base URL
