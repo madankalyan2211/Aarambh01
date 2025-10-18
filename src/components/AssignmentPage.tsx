@@ -12,6 +12,8 @@ import { motion } from 'motion/react';
 import { Upload, File, Clock, CheckCircle, AlertCircle, FileText, Loader2, BookOpen, Bot, Users, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { PDFViewer } from './PDFViewer';
+import { Leaderboard } from './Leaderboard';
+
 import { 
   getStudentAssignments, 
   getTeacherAssignments, 
@@ -93,6 +95,21 @@ interface Submission {
   isLate: boolean;
 }
 
+interface AIFeedback {
+  score: number;
+  feedback: string;
+  suggestions?: string[];
+  pdfProcessed?: boolean;
+  pdfName?: string;
+}
+
+interface Attachment {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
+
 interface AssignmentPageProps {
   onNavigate: (page: Page) => void;
   userRole: UserRole;
@@ -100,27 +117,27 @@ interface AssignmentPageProps {
 
 export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
   const { showToast } = useToast();
-  const [assignments, setAssignments] = useState([]);
-  const [teacherAssignments, setTeacherAssignments] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({}); // Track progress for each file
-  const [uploadedFiles, setUploadedFiles] = useState({}); // Track which files are uploaded
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({}); // Track progress for each file
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({}); // Track which files are uploaded
   const [showAIFeedback, setShowAIFeedback] = useState(false);
   const [plagiarismCheck, setPlagiarismCheck] = useState(0);
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [selectedTeacherAssignment, setSelectedTeacherAssignment] = useState(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedTeacherAssignment, setSelectedTeacherAssignment] = useState<TeacherAssignment | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showSubmissions, setShowSubmissions] = useState(false);
   const [aiGrading, setAiGrading] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState(null);
+  const [aiFeedback, setAiFeedback] = useState<AIFeedback | null>(null);
   const [showPDFViewer, setShowPDFViewer] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [selectedPDF, setSelectedPDF] = useState(null);
-  const [gradingSubmission, setGradingSubmission] = useState(null);
-  const fileInputRef = useRef(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [selectedPDF, setSelectedPDF] = useState<Attachment | null>(null);
+  const [gradingSubmission, setGradingSubmission] = useState<Submission & { aiFeedback?: AIFeedback } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form states
   const [title, setTitle] = useState('');
@@ -131,8 +148,8 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
   const [passingScore, setPassingScore] = useState(60);
   const [instructions, setInstructions] = useState('');
   const [content, setContent] = useState('');
-  const [files, setFiles] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
   
@@ -178,7 +195,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     }
   };
   
-  const fetchSubmissions = async (assignmentId) => {
+  const fetchSubmissions = async (assignmentId: string) => {
     try {
       const response = await getAssignmentSubmissions(assignmentId);
       if (response.success) {
@@ -191,8 +208,8 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
       showToast('error', 'Error', 'Failed to load submissions');
     }
   };
-  
-  const handleCreateAssignment = async (e) => {
+
+  const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title || !description || !courseId || !dueDate) {
@@ -227,7 +244,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     }
   };
   
-  const handleSubmitAssignment = async (e) => {
+  const handleSubmitAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const hasContent = content && content.trim().length > 0;
@@ -283,19 +300,20 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
         setFiles([]);
         setUploadProgress({});
         setUploadedFiles({});
+        setFileUploadStatus({});
         fetchAssignments();
       } else {
-        showToast('error', 'Failed to Submit', response.message || 'Failed to submit assignment');
+        showToast('error', 'Failed to Submit', response.message || 'Failed to submit assignment. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      showToast('error', 'Error', 'Failed to submit assignment: ' + error.message);
+      showToast('error', 'Error', 'Failed to submit assignment: ' + (error as Error).message);
     } finally {
       setSubmitting(false);
     }
   };
   
-  const handleAIAssist = async (submission) => {
+  const handleAIAssist = async (submission: Submission) => {
     console.log('🤖 AI Assist clicked with submission:', submission);
     
     setAiGrading(true);
@@ -308,7 +326,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
           setGradingSubmission({
             ...gradingSubmission,
             aiFeedback: response.data
-          });
+          } as Submission & { aiFeedback?: AIFeedback });
         } else {
           setShowAIFeedback(true);
         }
@@ -324,13 +342,13 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     }
   };
   
-  const handleViewPDF = (submission, pdfAttachment) => {
+  const handleViewPDF = (submission: Submission, pdfAttachment: Attachment) => {
     setSelectedSubmission(submission);
     setSelectedPDF(pdfAttachment);
     setShowPDFViewer(true);
   };
   
-  const handleGradeSubmission = async (submissionId, score, feedback) => {
+  const handleGradeSubmission = async (submissionId: string, score: number, feedback: string) => {
     try {
       const response = await gradeSubmission(submissionId, { score, feedback });
       if (response.success) {
@@ -361,16 +379,119 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     setInstructions('');
   };
   
-  const handleFileUpload = (e) => {
+  const [fileUploadStatus, setFileUploadStatus] = useState<Record<string, { progress: number; uploaded: boolean; error?: string }>>({});
+
+  // Function to upload a single file
+  const uploadFile = async (file: File) => {
+    const fileId = `${file.name}-${file.size}-${file.lastModified}`;
+    
+    // Initialize upload status
+    setFileUploadStatus(prev => ({
+      ...prev,
+      [fileId]: { progress: 0, uploaded: false }
+    }));
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return new Promise<{ success: boolean; url?: string; error?: string }>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setFileUploadStatus(prev => ({
+            ...prev,
+            [fileId]: { progress: percentComplete, uploaded: false }
+          }));
+        }
+      });
+      
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            setFileUploadStatus(prev => ({
+              ...prev,
+              [fileId]: { progress: 100, uploaded: true }
+            }));
+            resolve({ success: true, url: data.url });
+          } catch (parseError) {
+            setFileUploadStatus(prev => ({
+              ...prev,
+              [fileId]: { progress: 0, uploaded: false, error: 'Failed to parse response' }
+            }));
+            resolve({ success: false, error: 'Failed to parse server response' });
+          }
+        } else {
+          try {
+            const responseText = xhr.responseText;
+            // Check if this is a rate limiting error
+            if (xhr.status === 429 && responseText.includes('Too many requests')) {
+              setFileUploadStatus(prev => ({
+                ...prev,
+                [fileId]: { progress: 0, uploaded: false, error: 'Too many requests from this IP, please try again later.' }
+              }));
+              resolve({ success: false, error: 'Too many requests from this IP, please try again later.' });
+              return;
+            }
+            
+            const errorData = JSON.parse(responseText);
+            setFileUploadStatus(prev => ({
+              ...prev,
+              [fileId]: { progress: 0, uploaded: false, error: errorData.message || 'Upload failed' }
+            }));
+            resolve({ success: false, error: errorData.message || 'Upload failed' });
+          } catch (parseError) {
+            setFileUploadStatus(prev => ({
+              ...prev,
+              [fileId]: { progress: 0, uploaded: false, error: 'Upload failed' }
+            }));
+            resolve({ success: false, error: 'Upload failed' });
+          }
+        }
+      });
+      
+      // Handle errors
+      xhr.addEventListener('error', () => {
+        setFileUploadStatus(prev => ({
+          ...prev,
+          [fileId]: { progress: 0, uploaded: false, error: 'Network error' }
+        }));
+        resolve({ success: false, error: 'Network error during upload' });
+      });
+      
+      // Set up the request
+      xhr.open('POST', '/api/upload'); // This would be handled by the backend
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.send(formData);
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('File upload event triggered:', e.target.files);
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
       console.log('New files selected:', newFiles);
       setFiles(prev => [...prev, ...newFiles]);
+      
+      // Initialize upload status for new files
+      newFiles.forEach(file => {
+        const fileId = `${file.name}-${file.size}-${file.lastModified}`;
+        setFileUploadStatus(prev => ({
+          ...prev,
+          [fileId]: { progress: 0, uploaded: false }
+        }));
+      });
     }
   };
 
-  const removeFile = (index) => {
+  const removeFile = (index: number) => {
     console.log('Removing file at index:', index);
     setFiles(prev => {
       const newFiles = prev.filter((_, i) => i !== index);
@@ -379,7 +500,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     });
   };
   
-  const getGradeColor = (status, score) => {
+  const getGradeColor = (status: string, score: number | null) => {
     if (status === 'graded' && score !== null) {
       if (score >= 90) return 'bg-green-500';
       if (score >= 80) return 'bg-blue-500';
@@ -390,7 +511,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
     return 'bg-gray-500';
   };
   
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'graded':
         return <Badge className="bg-green-500 text-white">Graded</Badge>;
@@ -590,15 +711,15 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                           <p className="text-muted-foreground mb-3">{assignment.description}</p>
                           
                           <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
-                            <span className="flex items-center gap-1">
-                              <BookOpen className="h-4 w-4" />
-                              {assignment.course.name}
+                            <span className="flex items-center gap-1 min-w-0">
+                              <BookOpen className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{assignment.course.name}</span>
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                            <span className="flex items-center gap-1 min-w-0">
+                              <Clock className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                             </span>
-                            <span>
+                            <span className="truncate">
                               {assignment.daysLeft > 0 
                                 ? `${assignment.daysLeft} days left`
                                 : assignment.daysLeft === 0 
@@ -690,15 +811,15 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                           <p className="text-muted-foreground mb-3">{assignment.description}</p>
                           
                           <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
-                            <span className="flex items-center gap-1">
-                              <BookOpen className="h-4 w-4" />
-                              {assignment.course.name}
+                            <span className="flex items-center gap-1 min-w-0">
+                              <BookOpen className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{assignment.course.name}</span>
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                            <span className="flex items-center gap-1 min-w-0">
+                              <Clock className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                             </span>
-                            <span>
+                            <span className="truncate">
                               {assignment.totalSubmissions} / {assignment.course.enrolledStudents} submissions
                             </span>
                           </div>
@@ -716,9 +837,9 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                         </div>
                         
                         <div className="flex flex-col items-end gap-2">
-                          <div className="text-right text-sm">
-                            <p>{assignment.gradedSubmissions} / {assignment.totalSubmissions} graded</p>
-                            <p>{assignment.pendingSubmissions} pending</p>
+                          <div className="text-right text-sm min-w-0">
+                            <p className="truncate">{assignment.gradedSubmissions} / {assignment.totalSubmissions} graded</p>
+                            <p className="truncate">{assignment.pendingSubmissions} pending</p>
                           </div>
                           
                           <Button 
@@ -772,110 +893,132 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                 </p>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {submissions.map((submission) => (
-                  <Card key={submission.id} className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold">{submission.student.name}</h3>
-                          {submission.isLate && (
-                            <Badge variant="destructive">Late</Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground text-sm mb-3">
-                          Submitted: {new Date(submission.submittedAt).toLocaleString()}
-                        </p>
-                        
-                        {submission.content && (
-                          <div className="bg-secondary/10 p-3 rounded-lg mb-3">
-                            <p className="text-sm">{submission.content.substring(0, 100)}{submission.content.length > 100 ? '...' : ''}</p>
+              <div className="space-y-6">
+                {/* Leaderboard Section */}
+                <Leaderboard 
+                  submissions={submissions.map(sub => ({
+                    id: sub.id,
+                    studentName: sub.student.name,
+                    studentEmail: sub.student.email,
+                    score: sub.score || 0,
+                    maxScore: selectedTeacherAssignment.totalPoints,
+                    percentage: sub.score ? Math.round((sub.score / selectedTeacherAssignment.totalPoints) * 100) : 0,
+                    rank: 0, // Will be calculated in the component
+                    assignmentId: selectedTeacherAssignment.id,
+                    submittedAt: sub.submittedAt
+                  }))}
+                  assignmentTitle={selectedTeacherAssignment.title}
+                />
+                
+                {/* Individual Submissions */}
+                <div>
+                  <h3 className="text-xl font-bold mb-4">Individual Submissions</h3>
+                  <div className="space-y-4">
+                    {submissions.map((submission) => (
+                      <Card key={submission.id} className="p-6">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-bold">{submission.student.name}</h3>
+                              {submission.isLate && (
+                                <Badge variant="destructive">Late</Badge>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground text-sm mb-3 min-w-0">
+                              <span className="truncate">Submitted: {new Date(submission.submittedAt).toLocaleString()}</span>
+                            </p>
+                            
+                            {submission.content && (
+                              <div className="bg-secondary/10 p-3 rounded-lg mb-3">
+                                <p className="text-sm">{submission.content.substring(0, 100)}{submission.content.length > 100 ? '...' : ''}</p>
+                              </div>
+                            )}
+                            
+                            {submission.attachments && submission.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {submission.attachments.map((attachment, index) => (
+                                  <Badge 
+                                    key={index} 
+                                    variant="outline" 
+                                    className="flex items-center gap-1 cursor-pointer hover:bg-accent"
+                                    onClick={() => {
+                                      if (attachment.type === 'application/pdf' || attachment.name.toLowerCase().endsWith('.pdf')) {
+                                        handleViewPDF(submission, attachment);
+                                      }
+                                    }}
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    {attachment.name}
+                                    {(attachment.type === 'application/pdf' || attachment.name.toLowerCase().endsWith('.pdf')) && (
+                                      <Eye className="h-3 w-3 ml-1" />
+                                    )}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {submission.status === 'graded' && (
+                              <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
+                                <p className="text-sm">
+                                  <strong>Grade:</strong> {submission.score} pts
+                                </p>
+                                {submission.feedback && (
+                                  <p className="text-sm mt-1">
+                                    <strong>Feedback:</strong> {submission.feedback}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        
-                        {submission.attachments && submission.attachments.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {submission.attachments.map((attachment, index) => (
-                              <Badge 
-                                key={index} 
-                                variant="outline" 
-                                className="flex items-center gap-1 cursor-pointer hover:bg-accent"
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            {getStatusBadge(submission.status)}
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAIAssist(submission)}
+                                disabled={aiGrading}
+                              >
+                                {aiGrading ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Analyzing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Bot className="h-4 w-4 mr-2" />
+                                    AI Assist
+                                  </>
+                                )}
+                              </Button>
+                              <Button 
+                                size="sm"
+                                className="bg-[#FF69B4] hover:bg-[#FF69B4]/90 text-black dark:text-white"
                                 onClick={() => {
-                                  if (attachment.type === 'application/pdf' || attachment.name.toLowerCase().endsWith('.pdf')) {
-                                    handleViewPDF(submission, attachment);
+                                  setSelectedSubmission(submission);
+                                  // Find first PDF attachment if exists
+                                  const pdfAttachment = submission.attachments.find(att => 
+                                    att.type === 'application/pdf' || att.name.toLowerCase().endsWith('.pdf')
+                                  );
+                                  if (pdfAttachment) {
+                                    handleViewPDF(submission, pdfAttachment);
+                                  } else {
+                                    // For non-PDF submissions, open a simplified grading interface
+                                    setGradingSubmission(submission);
+                                    setShowPDFViewer(true);
                                   }
                                 }}
                               >
-                                <FileText className="h-3 w-3" />
-                                {attachment.name}
-                                {(attachment.type === 'application/pdf' || attachment.name.toLowerCase().endsWith('.pdf')) && (
-                                  <Eye className="h-3 w-3 ml-1" />
-                                )}
-                              </Badge>
-                            ))}
+                                Grade
+                              </Button>
+                            </div>
                           </div>
-                        )}
-                        
-                        {submission.status === 'graded' && (
-                          <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
-                            <p className="text-sm">
-                              <strong>Grade:</strong> {submission.score} pts
-                            </p>
-                            {submission.feedback && (
-                              <p className="text-sm mt-1">
-                                <strong>Feedback:</strong> {submission.feedback}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-col items-end gap-2">
-                        {getStatusBadge(submission.status)}
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAIAssist(submission)}
-                            disabled={aiGrading}
-                          >
-                            {aiGrading ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Analyzing...
-                              </>
-                            ) : (
-                              <>
-                                <Bot className="h-4 w-4 mr-2" />
-                                AI Assist
-                              </>
-                            )}
-                          </Button>
-                          <Button 
-                            size="sm"
-                            className="bg-[#FF69B4] hover:bg-[#FF69B4]/90 text-white"
-                            onClick={() => {
-                              setSelectedSubmission(submission);
-                              // Find first PDF attachment if exists
-                              const pdfAttachment = submission.attachments.find(att => 
-                                att.type === 'application/pdf' || att.name.toLowerCase().endsWith('.pdf')
-                              );
-                              if (pdfAttachment) {
-                                handleViewPDF(submission, pdfAttachment);
-                              } else {
-                                // For non-PDF submissions, open a simplified grading interface
-                                setGradingSubmission(submission);
-                                setShowPDFViewer(true);
-                              }
-                            }}
-                          >
-                            Grade
-                          </Button>
                         </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                      </Card>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>
@@ -991,20 +1134,27 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                               <div className="flex justify-between text-xs">
                                 <span>
                                   {isUploaded ? (
-                                    <span className="text-green-600 flex items-center gap-1">
+                                    <span className="text-green-600 flex items-center gap-1 font-medium">
                                       <CheckCircle className="h-3 w-3" />
-                                      Upload complete
+                                      Upload complete (100%)
                                     </span>
                                   ) : progress > 0 ? (
-                                    <span>Uploading... {progress}%</span>
+                                    <span className="text-blue-600 font-medium">Uploading... {progress}%</span>
                                   ) : (
-                                    <span>Ready to upload</span>
+                                    <span className="text-gray-500">Ready to upload</span>
                                   )}
                                 </span>
                                 <span>{(file.size / 1024).toFixed(1)} KB</span>
                               </div>
                               <Progress value={progress} className="h-2" />
+                              {isUploaded && (
+                                <div className="text-xs text-green-600 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  File successfully uploaded and ready for submission
+                                </div>
+                              )}
                             </div>
+
                           </div>
                         );
                       })}
@@ -1020,6 +1170,8 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                       setSelectedAssignment(null);
                       setUploadProgress({});
                       setUploadedFiles({});
+                      setFiles([]);
+                      setFileUploadStatus({});
                     }}
                     disabled={submitting}
                   >
@@ -1036,7 +1188,7 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
                         Submitting...
                       </>
                     ) : (
-                      'Submit Assignment'
+                        'Submit Assignment'
                     )}
                   </Button>
                 </div>
@@ -1096,28 +1248,30 @@ export function AssignmentPage({ onNavigate, userRole }: AssignmentPageProps) {
           </Button>
         </DialogContent>
       </Dialog>
-      {/* PDF Viewer and Grading Interface */}
-      {selectedSubmission && selectedTeacherAssignment && (
-        <PDFViewer
-          fileUrl={selectedPDF ? selectedPDF.url : ''}
-          fileName={selectedPDF ? selectedPDF.name : 'Submission'}
-          isOpen={showPDFViewer}
-          onClose={() => {
-            setShowPDFViewer(false);
-            setSelectedSubmission(null);
-            setSelectedPDF(null);
-            setGradingSubmission(null);
-            setAiFeedback(null);
-          }}
-          onGradeSubmit={(score, feedback) => handleGradeSubmission(selectedSubmission.id, score, feedback)}
-          onAIAssist={() => handleAIAssist(selectedSubmission)}
-          totalPoints={selectedTeacherAssignment.totalPoints}
-          initialScore={selectedSubmission.score}
-          initialFeedback={selectedSubmission.feedback}
-          aiGrading={aiGrading}
-          aiFeedback={gradingSubmission?.aiFeedback || aiFeedback || null}
-        />
-      )}
+      {/* PDF Viewer Dialog */}
+      <PDFViewer
+        fileUrl={selectedPDF?.url || ''}
+        fileName={selectedPDF?.name || 'Submission'}
+        isOpen={showPDFViewer}
+        onClose={() => {
+          setShowPDFViewer(false);
+          setSelectedPDF(null);
+          setSelectedSubmission(null);
+          setGradingSubmission(null);
+          setAiFeedback(null);
+        }}
+        onGradeSubmit={(score: number, feedback: string) => {
+          if (gradingSubmission) {
+            return handleGradeSubmission(gradingSubmission.id, score, feedback);
+          }
+        }}
+        onAIAssist={() => selectedSubmission && handleAIAssist(selectedSubmission)}
+        totalPoints={selectedTeacherAssignment?.totalPoints || 100}
+        initialScore={gradingSubmission?.score || null}
+        initialFeedback={gradingSubmission?.feedback || ''}
+        aiGrading={aiGrading}
+        aiFeedback={aiFeedback}
+      />
     </div>
   );
 }

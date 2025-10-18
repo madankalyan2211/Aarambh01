@@ -2,7 +2,7 @@
 
 ## 🔍 Problem
 
-The backend server on port 3001 crashed with an EIO (input/output) error:
+The backend server on port 31001 crashed with an EIO (input/output) error:
 ```
 Error: read EIO
 errno: -5, code: 'EIO', syscall: 'read'
@@ -29,9 +29,9 @@ This starts the server in background mode while keeping it attached to the termi
 
 ### Backend Server
 - **Status**: ✅ Running
-- **Port**: 3001
-- **URL**: http://localhost:3001
-- **Health**: http://localhost:3001/health
+- **Port**: 31001
+- **URL**: http://localhost:31001
+- **Health**: http://localhost:31001/health
 - **Process ID**: 27098
 - **Mode**: Development (nodemon with auto-reload)
 
@@ -52,11 +52,11 @@ This starts the server in background mode while keeping it attached to the termi
 
 ### Health Check
 ```bash
-curl http://localhost:3001/health
+curl http://localhost:31001/health
 ```
 
 **Response**:
-```json
+```
 {
     "success": true,
     "message": "Server is running",
@@ -66,7 +66,7 @@ curl http://localhost:3001/health
 
 ### Login Endpoint Test
 ```bash
-curl -X POST http://localhost:3001/api/auth/login \
+curl -X POST http://localhost:31001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"testpass123"}'
 ```
@@ -91,11 +91,11 @@ cd /Users/madanthambisetty/Downloads/Aarambh/server
 
 ### Check if Running
 ```bash
-# Check port 3001
-lsof -i :3001 | grep LISTEN
+# Check port 31001
+lsof -i :31001 | grep LISTEN
 
 # Check health endpoint
-curl http://localhost:3001/health
+curl http://localhost:31001/health
 ```
 
 ### View Logs
@@ -131,8 +131,8 @@ tail -f server.log
 
 **Issue**: Port already in use
 ```bash
-# Solution: Kill process on port 3001
-lsof -ti:3001 | xargs kill -9
+# Solution: Kill process on port 31001
+lsof -ti:31001 | xargs kill -9
 ```
 
 **Issue**: MongoDB connection failed
@@ -151,7 +151,7 @@ lsof -ti:3001 | xargs kill -9
 ### Server Crashes Immediately
 
 **Check for**:
-1. Port conflict (another app using 3001)
+1. Port conflict (another app using 31001)
 2. MongoDB connection issues
 3. Missing environment variables
 4. Syntax errors in code
@@ -173,12 +173,12 @@ pkill -f "node.*server"
 
 ### Force Stop
 ```bash
-lsof -ti:3001 | xargs kill -9
+lsof -ti:31001 | xargs kill -9
 ```
 
 ### Verify Stopped
 ```bash
-lsof -i :3001
+lsof -i :31001
 # Should return nothing
 ```
 
@@ -193,7 +193,7 @@ ps aux | grep "node.*server"
 
 ### Check Port
 ```bash
-lsof -i :3001
+lsof -i :31001
 ```
 
 ### Monitor Logs in Real-time
@@ -205,15 +205,13 @@ tail -f server.log
 ### Test API Health
 ```bash
 # Health check
-curl http://localhost:3001/health
+curl http://localhost:31001/health
 
 # API root
-curl http://localhost:3001/
+curl http://localhost:31001/
 
 # Test login
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}'
+curl -X POST http://localhost:31001/api/auth/login \
 ```
 
 ---
@@ -222,13 +220,7 @@ curl -X POST http://localhost:3001/api/auth/login \
 
 ### Required Variables (server/.env)
 ```env
-PORT=3001
-NODE_ENV=development
-MONGODB_URI=mongodb+srv://...
-JWT_SECRET=...
-GMAIL_USER=...
-GMAIL_APP_PASSWORD=...
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+PORT=31001
 ```
 
 ---
@@ -252,7 +244,7 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ## 🎯 Next Steps
 
 1. **Frontend is running** on http://localhost:3000
-2. **Backend is running** on http://localhost:3001
+2. **Backend is running** on http://localhost:31001
 3. **Open browser** to http://localhost:3000
 4. **Test login** with credentials:
    - Email: test@example.com
@@ -266,12 +258,12 @@ ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 |---------|---------|
 | `(npm run dev &)` | Start backend in background |
 | `pkill -f "node.*server"` | Stop backend |
-| `curl http://localhost:3001/health` | Check if running |
-| `lsof -i :3001` | Check port status |
+| `curl http://localhost:31001/health` | Check if running |
+| `lsof -i :31001` | Check port status |
 | `tail -f server.log` | View logs |
 
 ---
 
-**Backend server is now running successfully on port 3001!** 🎉
+**Backend server is now running successfully on port 31001!** 🎉
 
 The curl connection error has been resolved. All API endpoints are accessible.

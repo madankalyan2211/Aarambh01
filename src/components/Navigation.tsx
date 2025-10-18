@@ -11,6 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { useEffect, useState, useRef } from 'react';
+import { getUnreadMessagesCount, getUnreadNotificationsCount, markAllNotificationsAsRead } from '../services/api.service';
+import { io, Socket } from 'socket.io-client';
 
 interface NavigationProps {
   userRole: UserRole;
@@ -19,9 +22,14 @@ interface NavigationProps {
   currentPage: Page;
   isDark: boolean;
   onToggleDark: () => void;
+  userId?: string;
 }
 
-export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark, onToggleDark }: NavigationProps) {
+export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark, onToggleDark, userId }: NavigationProps) {
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+  const socketRef = useRef<Socket | null>(null);
+  
   const navItems = {
     student: [
       { page: 'student-dashboard' as Page, label: 'Dashboard', icon: Home },
@@ -49,6 +57,123 @@ export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark
 
   const items = navItems[userRole as 'student' | 'teacher' | 'admin'] || [];
 
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (!userId) return;
+
+    // Create socket connection
+    const socket = io('', {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+    });
+    
+    socketRef.current = socket;
+    
+    // Register user with socket server
+    socket.emit('register-user', userId);
+    
+    // Listen for unread notifications count updates
+    socket.on('unread-notifications-count', (data: { count: number }) => {
+      setUnreadNotificationsCount(data.count);
+    });
+    
+    // Listen for new notifications
+    socket.on('new-notification', () => {
+      // When a new notification arrives, fetch the updated count
+      fetchUnreadNotificationsCount();
+    });
+    
+    // Clean up on unmount
+    return () => {
+      socket.close();
+    };
+  }, [userId]);
+
+  // Listen for custom event from NotificationsPage
+  useEffect(() => {
+    const handleUnreadNotificationsUpdated = (event: CustomEvent) => {
+      setUnreadNotificationsCount(event.detail.count);
+    };
+    
+    window.addEventListener('unread-notifications-updated', handleUnreadNotificationsUpdated as EventListener);
+    
+    return () => {
+      window.removeEventListener('unread-notifications-updated', handleUnreadNotificationsUpdated as EventListener);
+    };
+  }, []);
+
+  // Fetch unread counts
+  const fetchUnreadMessagesCount = async () => {
+    try {
+      const response = await getUnreadMessagesCount();
+      if (response.success && response.data) {
+        setUnreadMessagesCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread messages count:', error);
+    }
+  };
+
+  const fetchUnreadNotificationsCount = async () => {
+    try {
+      const response = await getUnreadNotificationsCount();
+      if (response.success && response.data) {
+        setUnreadNotificationsCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notifications count:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Fetch initial counts
+    fetchUnreadMessagesCount();
+    fetchUnreadNotificationsCount();
+    
+    // Refresh counts every 30 seconds (fallback for WebSocket)
+    const interval = setInterval(() => {
+      fetchUnreadMessagesCount();
+      fetchUnreadNotificationsCount();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Function to open messages in a new window
+  const openMessagesWindow = () => {
+    // Get the auth token from localStorage
+    const authToken = localStorage.getItem('authToken');
+    
+    // Open messages page in a new window/tab
+    const messagesUrl = window.location.origin + '/#messages';
+    const messagesWindow = window.open(
+      messagesUrl, 
+      'Messages', 
+      'width=800,height=600,scrollbars=yes,resizable=yes'
+    );
+    
+    // Pass the auth token to the new window once it's loaded
+    if (messagesWindow && authToken) {
+      const sendToken = () => {
+        messagesWindow.postMessage({
+          type: 'AUTH_TOKEN',
+          token: authToken
+        }, window.location.origin);
+      };
+      
+      // Try to send the token immediately and after delays
+      sendToken();
+      setTimeout(sendToken, 500);
+      setTimeout(sendToken, 1500);
+      setTimeout(sendToken, 3000);
+    }
+    
+    // Focus the new window
+    if (messagesWindow) {
+      messagesWindow.focus();
+    }
+  };
+
   return (
     <nav className="bg-card border-b-4 border-primary sticky top-0 z-50 shadow-lg text-foreground">
       <div className="container mx-auto px-4 py-3">
@@ -74,6 +199,22 @@ export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark
           <div className="flex items-center gap-2">
             <VoiceAssistant userRole={userRole || undefined} />
             
+            {/* DM Button - opens in new window */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={openMessagesWindow}
+              title="Direct Messages"
+            >
+              <MessageSquare className="h-5 w-5" />
+              {unreadMessagesCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent">
+                  {unreadMessagesCount}
+                </Badge>
+              )}
+            </Button>
+            
             <Button
               variant="ghost"
               size="icon"
@@ -81,9 +222,11 @@ export function Navigation({ userRole, onNavigate, onLogout, currentPage, isDark
               onClick={() => onNavigate('notifications')}
             >
               <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent">
-                3
-              </Badge>
+              {unreadNotificationsCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent">
+                  {unreadNotificationsCount}
+                </Badge>
+              )}
             </Button>
             
             <DropdownMenu>

@@ -58,26 +58,26 @@ node add-user.js
 # Enter: name="John Student", email="student@test.com", password="pass123", role="student"
 
 # 4. Login as student and get token
-curl -X POST http://localhost:3001/api/auth/login \
+curl -X POST http://localhost:31001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"student@test.com","password":"pass123"}'
 
 # Copy the token from response
 
 # 5. Get all teachers
-curl http://localhost:3001/api/enrollment/teachers \
+curl http://localhost:31001/api/enrollment/teachers \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 
 # You should see the teacher!
 
 # 6. Enroll with the teacher (use teacher ID from above)
-curl -X POST http://localhost:3001/api/enrollment/enroll-teacher \
+curl -X POST http://localhost:31001/api/enrollment/enroll-teacher \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_TOKEN_HERE" \
   -d '{"teacherId":"TEACHER_ID_HERE"}'
 
 # 7. View my enrolled teachers
-curl http://localhost:3001/api/enrollment/my-teachers \
+curl http://localhost:31001/api/enrollment/my-teachers \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 
 # SUCCESS! You should see the enrolled teacher!

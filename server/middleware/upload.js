@@ -20,13 +20,19 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter for PDF files only
+// File filter for PDF files only - stricter validation
 const fileFilter = (req, file, cb) => {
-  // Accept only PDF files
-  if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
+  // Accept only PDF files with correct MIME type
+  // This is more strict than just checking extension
+  if (file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF files are allowed!'), false);
+    // Special case: if it's a PDF extension but wrong MIME type, reject it
+    if (file.originalname.toLowerCase().endsWith('.pdf')) {
+      cb(new Error('File extension is .pdf but content is not a valid PDF document!'), false);
+    } else {
+      cb(new Error('Only PDF files are allowed!'), false);
+    }
   }
 };
 

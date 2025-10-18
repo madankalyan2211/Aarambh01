@@ -13,8 +13,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if backend server is already running
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null ; then
-    echo -e "${YELLOW}⚠️  Backend server is already running on port 3001${NC}"
+if lsof -Pi :31001 -sTCP:LISTEN -t >/dev/null ; then
+    echo -e "${YELLOW}⚠️  Backend server is already running on port 31001${NC}"
 else
     echo -e "${GREEN}Starting backend server...${NC}"
     cd server && npm run dev > ../backend.log 2>&1 &
@@ -40,8 +40,8 @@ echo -e "${GREEN}✅ Aarambh LMS is starting!${NC}"
 echo "═════════════════════════════════════════"
 echo ""
 echo "🌐 Frontend: http://localhost:5173"
-echo "🔌 Backend:  http://localhost:3001"
-echo "💚 Health:   http://localhost:3001/health"
+echo "🔌 Backend:  http://localhost:31001"
+echo "💚 Health:   http://localhost:31001/health"
 echo ""
 echo "📝 Logs:"
 echo "   Backend:  tail -f backend.log"
@@ -59,7 +59,7 @@ echo "Checking server status..."
 echo ""
 
 # Check backend
-if curl -s http://localhost:3001/health > /dev/null 2>&1; then
+if curl -s http://localhost:31001/health > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Backend server is running${NC}"
 else
     echo -e "${RED}❌ Backend server failed to start${NC}"

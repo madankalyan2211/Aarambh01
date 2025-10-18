@@ -4,18 +4,32 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Trash2, Users, Loader2, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Users, Loader2, CheckCircle2, Plus, X } from 'lucide-react';
 import { getAllCoursesAPI, getTeachingCourses, addTeachingCourse, removeTeachingCourse } from '../services/api.service';
+import { useToast } from './ui/toast';
+
+// Define the course type
+interface Course {
+  id: string;
+  _id: string;
+  name: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  enrolledCount?: number;
+  [key: string]: any; // Allow additional properties
+}
 
 interface TeacherCoursesPageProps {
   onNavigate: (page: Page) => void;
 }
 
 export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
-  const [allCourses, setAllCourses] = useState([]);
-  const [teachingCourses, setTeachingCourses] = useState([]);
+  const { showToast } = useToast();
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [teachingCourses, setTeachingCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(null);
+  const [processingCourses, setProcessingCourses] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchCourses();
@@ -46,40 +60,71 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
     }
   };
 
-  const handleAddCourse = async (courseId) => {
-    setProcessing(courseId);
-    try {
-      const result = await addTeachingCourse(courseId);
-      console.log('Add course result:', result);
+  // Helper function to get course ID consistently
+  const getCourseId = (course: Course): string => {
+    return course.id || course._id || '';
+  };
 
-      if (result.success) {
-        await fetchCourses(); // Refresh the lists
+  // Helper function to check if a teacher is teaching a course
+  const isTeachingCourse = (courseId: string): boolean => {
+    return teachingCourses.some(tc => {
+      const teachingCourseId = getCourseId(tc);
+      return teachingCourseId === courseId;
+    });
+  };
+
+  const handleEnrollCourse = async (courseId: string) => {
+    // Add course to processing state
+    setProcessingCourses(prev => new Set(prev).add(courseId));
+    
+    try {
+      const response = await addTeachingCourse(courseId);
+      
+      if (response.success) {
+        showToast('success', 'Success', 'Course added to your teaching list');
+        // Refresh courses to update the UI
+        await fetchCourses();
+      } else {
+        showToast('error', 'Error', response.message || 'Failed to add course to teaching list');
       }
     } catch (error) {
-      console.error('Error adding course:', error);
+      console.error('Error enrolling in course:', error);
+      showToast('error', 'Error', 'Failed to add course to teaching list');
     } finally {
-      setProcessing(null);
+      // Remove course from processing state
+      setProcessingCourses(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(courseId);
+        return newSet;
+      });
     }
   };
 
-  const handleRemoveCourse = async (courseId) => {
-    setProcessing(courseId);
+  const handleUnenrollCourse = async (courseId: string) => {
+    // Add course to processing state
+    setProcessingCourses(prev => new Set(prev).add(courseId));
+    
     try {
-      const result = await removeTeachingCourse(courseId);
-      console.log('Remove course result:', result);
-
-      if (result.success) {
-        await fetchCourses(); // Refresh the lists
+      const response = await removeTeachingCourse(courseId);
+      
+      if (response.success) {
+        showToast('success', 'Success', 'Course removed from your teaching list');
+        // Refresh courses to update the UI
+        await fetchCourses();
+      } else {
+        showToast('error', 'Error', response.message || 'Failed to remove course from teaching list');
       }
     } catch (error) {
-      console.error('Error removing course:', error);
+      console.error('Error unenrolling from course:', error);
+      showToast('error', 'Error', 'Failed to remove course from teaching list');
     } finally {
-      setProcessing(null);
+      // Remove course from processing state
+      setProcessingCourses(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(courseId);
+        return newSet;
+      });
     }
-  };
-
-  const isTeaching = (courseId) => {
-    return teachingCourses.some(c => c.id === courseId);
   };
 
   return (
@@ -93,7 +138,7 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
         >
           <h1>My Courses 📚</h1>
           <p className="text-muted-foreground">
-            Manage the courses you teach
+            View the courses you teach
           </p>
         </motion.div>
 
@@ -142,83 +187,94 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
 
               {teachingCourses.length > 0 ? (
                 <div className="space-y-3">
-                  {teachingCourses.map((course, index) => (
-                    <motion.div
-                      key={course.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.05 * index }}
-                    >
-                      <Card className="p-4 bg-gradient-to-br from-[#FF69B4]/5 to-accent/5 border-[#FF69B4]/20">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-lg bg-[#FF69B4]/10 flex items-center justify-center shrink-0">
-                            <BookOpen className="h-6 w-6" style={{ color: '#FF69B4' }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold mb-1">{course.name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                              {course.description}
-                            </p>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              <Badge variant="outline" style={{ borderColor: '#FF69B4', color: '#FF69B4' }}>
-                                {course.difficulty}
-                              </Badge>
-                              <Badge variant="outline">{course.category}</Badge>
-                              <Badge variant="outline">
-                                <Users className="h-3 w-3 mr-1" />
-                                {course.enrolledCount || 0} students
-                              </Badge>
+                  {teachingCourses.map((course, index) => {
+                    const courseId = getCourseId(course);
+                    return (
+                      <motion.div
+                        key={courseId}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.05 * index }}
+                      >
+                        <Card className="p-4 bg-gradient-to-br from-[#FF69B4]/5 to-accent/5 border-[#FF69B4]/20">
+                          <div className="flex items-start gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-[#FF69B4]/10 flex items-center justify-center shrink-0">
+                              <BookOpen className="h-6 w-6" style={{ color: '#FF69B4' }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold mb-1">{course.name}</h3>
+                              <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                                {course.description}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                <Badge variant="outline" style={{ borderColor: '#FF69B4', color: '#FF69B4' }}>
+                                  {course.difficulty}
+                                </Badge>
+                                <Badge variant="outline">{course.category}</Badge>
+                                <Badge variant="outline">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  {course.enrolledCount || 0} students
+                                </Badge>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUnenrollCourse(courseId)}
+                                disabled={processingCourses.has(courseId)}
+                                className="border-[#FF69B4] text-[#FF69B4] hover:bg-[#FF69B4]/10"
+                              >
+                                {processingCourses.has(courseId) ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <X className="h-4 w-4 mr-1" />
+                                    Remove from Teaching
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 border-accent text-accent hover:bg-accent hover:text-white"
-                            onClick={() => handleRemoveCourse(course.id)}
-                            disabled={processing === course.id}
-                          >
-                            {processing === course.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <><Trash2 className="h-4 w-4 mr-1" /> Remove</>
-                            )}
-                          </Button>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="p-8 text-center">
                   <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground mb-2">No courses yet</p>
                   <p className="text-sm text-muted-foreground">
-                    Add courses from the available list →
+                    You are not currently teaching any courses
                   </p>
                 </Card>
               )}
             </div>
 
-            {/* Available Courses */}
+            {/* Available Courses - With enroll/unenroll functionality */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Plus className="h-5 w-5" style={{ color: '#FF69B4' }} />
-                <h2>Available Courses ({allCourses.length})</h2>
+                <BookOpen className="h-5 w-5" style={{ color: '#FF69B4' }} />
+                <h2>All Available Courses ({allCourses.length})</h2>
               </div>
 
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {allCourses.map((course, index) => {
-                  const isAlreadyTeaching = isTeaching(course.id);
-                  const isCurrentProcessing = processing === course.id;
-
+                  // Check if the teacher is already teaching this course
+                  const courseId = getCourseId(course);
+                  
+                  // Only show courses that are not already being taught
+                  if (isTeachingCourse(courseId)) {
+                    return null;
+                  }
+                  
                   return (
                     <motion.div
-                      key={course.id}
+                      key={courseId}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.05 * index }}
                     >
-                      <Card className={`p-4 ${isAlreadyTeaching ? 'opacity-50' : ''}`}>
+                      <Card className="p-4">
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
                             <BookOpen className="h-5 w-5 text-accent" />
@@ -228,34 +284,40 @@ export function TeacherCoursesPage({ onNavigate }: TeacherCoursesPageProps) {
                             <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
                               {course.description}
                             </p>
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1 mb-2">
                               <Badge variant="outline" className="text-xs">{course.difficulty}</Badge>
                               <Badge variant="outline" className="text-xs">{course.category}</Badge>
                             </div>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleEnrollCourse(courseId)}
+                              disabled={processingCourses.has(courseId)}
+                            >
+                              {processingCourses.has(courseId) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add to Teaching
+                                </>
+                              )}
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            className="shrink-0"
-                            style={{ 
-                              backgroundColor: isAlreadyTeaching ? '#6b7280' : '#FF69B4',
-                              color: 'white'
-                            }}
-                            onClick={() => handleAddCourse(course.id)}
-                            disabled={isAlreadyTeaching || isCurrentProcessing}
-                          >
-                            {isCurrentProcessing ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isAlreadyTeaching ? (
-                              'Teaching'
-                            ) : (
-                              <><Plus className="h-4 w-4 mr-1" /> Add</>
-                            )}
-                          </Button>
                         </div>
                       </Card>
                     </motion.div>
                   );
                 })}
+                {allCourses.length > 0 && allCourses.every(course => isTeachingCourse(getCourseId(course))) && (
+                  <Card className="p-8 text-center">
+                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-2">No more courses available</p>
+                    <p className="text-sm text-muted-foreground">
+                      You are teaching all available courses
+                    </p>
+                  </Card>
+                )}
               </div>
             </div>
           </div>

@@ -9,7 +9,13 @@ const courseRoutes = require('./routes/course.routes.js');
 const enrollmentRoutes = require('./routes/enrollment.routes.js');
 const assignmentRoutes = require('./routes/assignment.routes.js');
 const gradeRoutes = require('./routes/grade.routes.js');
+const discussionRoutes = require('./routes/discussion.routes.js');
+const userRoutes = require('./routes/users.routes.js');
+const messageRoutes = require('./routes/message.routes.js');
+const announcementRoutes = require('./routes/announcement.routes.js');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Load environment variables
 dotenv.config({ path: __dirname + '/.env' });
@@ -18,7 +24,73 @@ dotenv.config({ path: __dirname + '/.env' });
 connectDB();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const server = http.createServer(app);
+const PORT = process.env.PORT || 31001;
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or Postman)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list or if it's a local request or a vercel app
+      const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5175',
+        'https://aarambh-frontend.vercel.app',
+        'https://aarambh-git-main-madantambisetty.vercel.app',
+        'https://aarambh.vercel.app'
+      ];
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || 
+          origin?.startsWith('http://localhost:') || 
+          origin?.startsWith('http://127.0.0.1:') ||
+          origin?.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }
+});
+
+// Store connected users
+const connectedUsers = new Map();
+
+// Handle socket connections
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // When a user connects, store their user ID
+  socket.on('register-user', (userId) => {
+    connectedUsers.set(userId, socket.id);
+    console.log(`User ${userId} registered with socket ${socket.id}`);
+  });
+  
+  // Handle disconnections
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    // Remove user from connected users map
+    for (let [userId, socketId] of connectedUsers.entries()) {
+      if (socketId === socket.id) {
+        connectedUsers.delete(userId);
+        break;
+      }
+    }
+  });
+});
+
+// Make io available to other modules
+app.set('io', io);
+app.set('connectedUsers', connectedUsers);
 
 // Middleware
 app.use(express.json());
@@ -32,9 +104,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5174',
+  'http://localhost:5175',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
   'https://aarambh-frontend.vercel.app',
   'https://aarambh-git-main-madantambisetty.vercel.app',
   'https://aarambh.vercel.app'
@@ -61,7 +135,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 500, // Increased limit to 500 requests per windowMs for development
   message: 'Too many requests from this IP, please try again later.',
 });
 
@@ -83,6 +157,12 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/enrollment', enrollmentRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/grades', gradeRoutes);
+app.use('/api/discussions', discussionRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/admin', require('./routes/admin.routes'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -93,7 +173,7 @@ app.get('/health', (req, res) => {
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
-    mongodb: mongodbStatus,
+    mongodbStatus: mongodbStatus,
     uptime: process.uptime(),
   });
 });
@@ -149,12 +229,13 @@ app.use((req, res) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('');
   console.log('🚀 ========================================');
   console.log(`🚀 Aarambh LMS Backend Server Started`);
   console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🚀 Server running on port: ${PORT}`);
+  console.log(`🚀 WebSocket server available at: ws://localhost:${PORT}`);
   console.log(`🚀 Health check: /health`);
   console.log('🚀 ========================================');
   console.log('');

@@ -24,10 +24,11 @@ const submissionSchema = new mongoose.Schema({
     ref: 'Course',
     required: [true, 'Course is required'],
   },
-  // Submission content
+  // Submission content - required only if no attachments
   content: {
     type: String,
-    required: [true, 'Submission content is required'],
+    // Remove the required validation since content can be empty when files are attached
+    default: '',
   },
   attachments: [attachmentSchema],
   // Submission metadata
@@ -90,6 +91,16 @@ const submissionSchema = new mongoose.Schema({
   }],
 }, {
   timestamps: true,
+});
+
+// Add a custom validator to ensure either content or attachments are provided
+submissionSchema.pre('validate', function(next) {
+  // If no content and no attachments, validation should fail
+  if ((!this.content || this.content.trim() === '') && (!this.attachments || this.attachments.length === 0)) {
+    next(new Error('Either submission content or file attachments are required'));
+  } else {
+    next();
+  }
 });
 
 // Index for querying

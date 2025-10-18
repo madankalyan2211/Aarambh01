@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+    <h1>PDF Test</h1>
+    <div id="pdf-viewer" style="width: 100%; height: 800px; border: 1px solid #ccc;"></div>
+
+    <script>
+        // Set the worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        
+        // Load the PDF
+        const url = 'http://localhost:31001/uploads/test-submission.pdf';
+        
+        pdfjsLib.getDocument(url).promise.then(function(pdf) {
+            console.log('PDF loaded successfully');
+            // Fetch the first page
+            pdf.getPage(1).then(function(page) {
+                console.log('Page loaded successfully');
+                var scale = 1.5;
+                var viewport = page.getViewport({scale: scale});
+
+                // Prepare canvas using PDF page dimensions
+                var canvas = document.createElement('canvas');
+                var context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                // Render PDF page into canvas context
+                var renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                var renderTask = page.render(renderContext);
+                renderTask.promise.then(function () {
+                    console.log('Page rendered successfully');
+                    document.getElementById('pdf-viewer').appendChild(canvas);
+                });
+            });
+        }).catch(function(error) {
+            console.error('Error loading PDF:', error);
+            document.getElementById('pdf-viewer').innerHTML = '<p>Error loading PDF: ' + error.message + '</p>';
+        });
+    </script>
+</body>
+</html>

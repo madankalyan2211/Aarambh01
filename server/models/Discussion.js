@@ -10,6 +10,10 @@ const discussionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Discussion content is required'],
   },
+  college: {
+    type: String,
+    trim: true,
+  },
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -18,12 +22,12 @@ const discussionSchema = new mongoose.Schema({
   course: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    required: [true, 'Course is required'],
+    required: false, // Make course optional to support global discussions
   },
   // Discussion metadata
   category: {
     type: String,
-    enum: ['question', 'announcement', 'discussion', 'resource'],
+    enum: ['question', 'announcement', 'discussion', 'resource', 'global'],
     default: 'discussion',
   },
   tags: [String],

@@ -12,7 +12,7 @@ The API request failures were due to:
 
 ### 1. Backend Server Restarted
 
-The server is now running on **http://localhost:3001**
+The server is now running on **http://localhost:31001**
 
 ```bash
 ✅ MongoDB Connected
@@ -26,10 +26,10 @@ The server is now running on **http://localhost:3001**
 
 Key configuration:
 ```env
-VITE_API_BASE_URL=http://localhost:3001/api
+VITE_API_BASE_URL=http://localhost:31001/api
 ```
 
-This ensures the frontend connects to the correct backend port (3001, not 3000).
+This ensures the frontend connects to the correct backend port (31001, not 3000).
 
 ---
 
@@ -45,7 +45,7 @@ npm run dev
 **Expected output**:
 ```
 🚀 Aarambh LMS Backend Server Started
-🚀 Server running on: http://localhost:3001
+🚀 Server running on: http://localhost:31001
 ✅ MongoDB Connected
 ✅ Email server is ready
 ```
@@ -72,7 +72,7 @@ VITE v5.x.x  ready in xxx ms
 ### 1. Check Backend Server Status
 
 ```bash
-curl http://localhost:3001/health
+curl http://localhost:31001/health
 ```
 
 **Expected response**:
@@ -87,7 +87,7 @@ curl http://localhost:3001/health
 ### 2. Test Login Endpoint
 
 ```bash
-curl -X POST http://localhost:3001/api/auth/login \
+curl -X POST http://localhost:31001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"testpass123"}'
 ```
@@ -114,7 +114,7 @@ curl -X POST http://localhost:3001/api/auth/login \
 Open browser console when on http://localhost:5173 and check:
 ```javascript
 import.meta.env.VITE_API_BASE_URL
-// Should output: "http://localhost:3001/api"
+// Should output: "http://localhost:31001/api"
 ```
 
 ---
@@ -137,7 +137,7 @@ npm run dev
 
 **Solution**: Check `.env` file has:
 ```env
-VITE_API_BASE_URL=http://localhost:3001/api
+VITE_API_BASE_URL=http://localhost:31001/api
 ```
 
 Then restart frontend:
@@ -172,11 +172,11 @@ node add-user.js test@example.com testpass123 "Test User" student
 **Solution**:
 ```bash
 # Find and kill the process
-lsof -i :3001 | grep LISTEN
+lsof -i :31001 | grep LISTEN
 kill -9 <PID>
 
 # Or change port in server/.env
-PORT=3002
+PORT=31001
 ```
 
 ---
@@ -185,12 +185,12 @@ PORT=3002
 
 Create this handy script to check server status:
 
-```bash
+```
 #!/bin/bash
 # File: check-servers.sh
 
-echo "Checking Backend Server (Port 3001)..."
-curl -s http://localhost:3001/health && echo " ✅ Backend is running" || echo " ❌ Backend is not running"
+echo "Checking Backend Server (Port 31001)..."
+curl -s http://localhost:31001/health && echo " ✅ Backend is running" || echo " ❌ Backend is not running"
 
 echo ""
 echo "Checking Frontend Server (Port 5173)..."
@@ -198,7 +198,7 @@ curl -s http://localhost:5173 > /dev/null && echo " ✅ Frontend is running" || 
 
 echo ""
 echo "Checking MongoDB Connection..."
-curl -s http://localhost:3001/api/courses > /dev/null && echo " ✅ MongoDB is connected" || echo " ❌ MongoDB connection issue"
+curl -s http://localhost:31001/api/courses > /dev/null && echo " ✅ MongoDB is connected" || echo " ❌ MongoDB connection issue"
 ```
 
 Make it executable:
@@ -266,7 +266,7 @@ console.log(import.meta.env.VITE_API_BASE_URL);
 
 ### Monitor API Requests
 Open DevTools → Network tab → Filter: "Fetch/XHR"
-- Look for requests to `http://localhost:3001/api/`
+- Look for requests to `http://localhost:31001/api/`
 - Check request payload and response
 
 ### Common Error Messages
@@ -290,7 +290,7 @@ If all else fails, do a complete restart:
 pkill -f "node"
 
 # 2. Clear any stuck ports
-lsof -ti :3001 | xargs kill -9
+lsof -ti :31001 | xargs kill -9
 lsof -ti :5173 | xargs kill -9
 
 # 3. Restart backend
@@ -311,7 +311,7 @@ Before reporting issues, verify:
 - [ ] Backend server is running on port 3001
 - [ ] Frontend is running on port 5173
 - [ ] `.env` file exists in root directory
-- [ ] `VITE_API_BASE_URL=http://localhost:3001/api` in `.env`
+- [ ] `VITE_API_BASE_URL=http://localhost:31001/api` in `.env`
 - [ ] MongoDB is connected (check server logs)
 - [ ] At least one test user exists in database
 - [ ] CORS origins include your frontend URL
@@ -345,7 +345,7 @@ If issues persist:
 
 4. **Test endpoints directly**:
    ```bash
-   curl -X POST http://localhost:3001/api/auth/login \
+   curl -X POST http://localhost:31001/api/auth/login \
      -H "Content-Type: application/json" \
      -d '{"email":"test@example.com","password":"testpass123"}'
    ```
