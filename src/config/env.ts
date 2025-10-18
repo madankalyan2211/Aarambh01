@@ -64,14 +64,14 @@ interface EnvConfig {
  * Get environment variable with fallback
  */
 const getEnv = (key: string, defaultValue: string = ''): string => {
-  return import.meta.env[key] || defaultValue;
+  return (import.meta as any).env[key] || defaultValue;
 };
 
 /**
  * Get boolean environment variable
  */
 const getEnvBoolean = (key: string, defaultValue: boolean = false): boolean => {
-  const value = import.meta.env[key];
+  const value = (import.meta as any).env[key];
   if (value === undefined || value === null) return defaultValue;
   return value === 'true' || value === true;
 };
@@ -80,7 +80,7 @@ const getEnvBoolean = (key: string, defaultValue: boolean = false): boolean => {
  * Get number environment variable
  */
 const getEnvNumber = (key: string, defaultValue: number = 0): number => {
-  const value = import.meta.env[key];
+  const value = (import.meta as any).env[key];
   if (value === undefined || value === null) return defaultValue;
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? defaultValue : parsed;
@@ -145,6 +145,13 @@ export const env: EnvConfig = {
   enableSocialLogin: getEnvBoolean('VITE_ENABLE_SOCIAL_LOGIN', false),
   enable2FA: getEnvBoolean('VITE_ENABLE_2FA', true),
 };
+
+// Log environment configuration for debugging
+console.log('🔧 Environment Configuration Loaded:', {
+  apiBaseUrl: env.apiBaseUrl,
+  appEnv: env.appEnv,
+  debugMode: env.debugMode,
+});
 
 /**
  * Validate required environment variables

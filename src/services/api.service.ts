@@ -8,6 +8,20 @@ import { env } from '../config/env';
 const API_BASE_URL = env.apiBaseUrl || '';
 
 console.log('🔧 Using API base URL:', API_BASE_URL || 'relative URLs');
+console.log('🔧 Environment config:', {
+  apiBaseUrl: env.apiBaseUrl,
+  appEnv: env.appEnv,
+  debugMode: env.debugMode,
+});
+
+// Ensure the API_BASE_URL ends with /api for consistency
+const normalizedApiBaseUrl = API_BASE_URL ? API_BASE_URL.replace(/\/$/, '') : '';
+
+// Validate that we have a proper API base URL in production
+if (env.appEnv === 'production' && (!API_BASE_URL || API_BASE_URL === 'http://localhost:31001/api')) {
+  console.error('❌ CRITICAL: API Base URL is not properly configured for production environment!');
+  console.error('🔧 Current API Base URL:', API_BASE_URL);
+}
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -32,7 +46,7 @@ export const apiRequest = async <T = any>(
     // Construct the full URL
     // In production: Use the full API URL from environment variables
     // In development: Use relative URLs that will be proxied
-    const fullUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : `/api${endpoint}`;
+    const fullUrl = normalizedApiBaseUrl ? `${normalizedApiBaseUrl}${endpoint}` : `/api${endpoint}`;
     
     console.log('🚀 API Request:', {
       endpoint,
@@ -58,6 +72,11 @@ export const apiRequest = async <T = any>(
     // Check if the response is a rate limiting error (plain text)
     if (responseText.includes('Too many requests') || responseText.includes('rate limit')) {
       throw new Error('Too many requests from this IP, please try again later.');
+    }
+    
+    // Check if we received HTML (which means we're getting the frontend app instead of API response)
+    if (responseText.trim().startsWith('<!DOCTYPE html>')) {
+      throw new Error(`Received HTML response instead of API response. Check if API URL is correct. Requested: ${fullUrl}`);
     }
     
     // Try to parse JSON
@@ -94,6 +113,9 @@ export const apiRequest = async <T = any>(
       if (error.message.includes('Too many requests') || error.message.includes('rate limit')) {
         errorMessage = 'Too many requests from this IP, please try again later.';
         errorDetail = 'Rate limit exceeded. Please wait a few minutes before trying again.';
+      } else if (error.message.includes('Received HTML response')) {
+        errorMessage = 'API connection error';
+        errorDetail = 'The frontend is not properly connected to the backend API. Please check the API configuration.';
       } else {
         try {
           const errorDetails = JSON.parse(error.message);
@@ -119,6 +141,15 @@ export const apiRequest = async <T = any>(
  * Send OTP to email
  */
 export const sendOTP = async (email: string, name?: string): Promise<ApiResponse> => {
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest('/auth/send-otp', {
     method: 'POST',
     body: JSON.stringify({ email, name }),
@@ -129,6 +160,15 @@ export const sendOTP = async (email: string, name?: string): Promise<ApiResponse
  * Verify OTP
  */
 export const verifyOTP = async (email: string, otp: string): Promise<ApiResponse> => {
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest('/auth/verify-otp', {
     method: 'POST',
     body: JSON.stringify({ email, otp }),
@@ -139,6 +179,15 @@ export const verifyOTP = async (email: string, otp: string): Promise<ApiResponse
  * Resend OTP
  */
 export const resendOTP = async (email: string, name?: string): Promise<ApiResponse> => {
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest('/auth/resend-otp', {
     method: 'POST',
     body: JSON.stringify({ email, name }),
@@ -149,6 +198,15 @@ export const resendOTP = async (email: string, name?: string): Promise<ApiRespon
  * Send welcome email
  */
 export const sendWelcomeEmail = async (email: string, name: string): Promise<ApiResponse> => {
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest('/auth/send-welcome', {
     method: 'POST',
     body: JSON.stringify({ email, name }),
@@ -160,6 +218,16 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<Api
  */
 export const getCurrentUser = async (): Promise<ApiResponse> => {
   const token = localStorage.getItem('authToken');
+  
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest('/auth/me', {
     method: 'GET',
     headers: {
@@ -173,6 +241,16 @@ export const getCurrentUser = async (): Promise<ApiResponse> => {
  */
 export const searchUsers = async (query: string): Promise<ApiResponse> => {
   const token = localStorage.getItem('authToken');
+  
+  // Validate API configuration before making request
+  if (env.appEnv === 'production' && (!normalizedApiBaseUrl || normalizedApiBaseUrl === 'http://localhost:31001/api')) {
+    return {
+      success: false,
+      message: 'API not properly configured',
+      error: 'The application is not properly configured to connect to the backend API. Please contact support.',
+    };
+  }
+  
   return apiRequest(`/users/search?query=${encodeURIComponent(query)}`, {
     method: 'GET',
     headers: {
